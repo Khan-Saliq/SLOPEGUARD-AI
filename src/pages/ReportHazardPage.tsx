@@ -9,7 +9,7 @@ import { Button } from '../components/ui/Button';
 import { RiskBadge } from '../components/ui/Badge';
 import { OfflineSyncBar } from '../components/layout/OfflineSyncBar';
 import { EvaluatorExplanationCard } from '../components/ui/EvaluatorExplanationCard';
-import type { ProblemCategory, RiskLevel, CitizenReport } from '../types';
+import type { ProblemCategory, RiskLevel } from '../types';
 import {
   Camera, MapPin, Upload, CheckCircle, Loader2, Shield,
   Navigation, WifiOff, Sparkles, Video, RefreshCw,
@@ -163,7 +163,7 @@ export function ReportHazardPage() {
 
       if (!isOnline) {
       // Save offline to local storage queue
-      const savedReport = saveReportOffline({
+      saveReportOffline({
         userId: user?.id ?? 'anonymous',
         userName: user?.name ?? 'Field Official',
         category: aiResult.detectedCategory,
@@ -179,7 +179,6 @@ export function ReportHazardPage() {
         gpsAccuracy: location.accuracy,
         severity: aiResult.severity,
       });
-      // saved offline (no local UI readback required)
       } else {
       // Online submission to database
       const input = {

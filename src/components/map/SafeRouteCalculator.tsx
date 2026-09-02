@@ -16,9 +16,9 @@ export function SafeRouteCalculator({ roads, villages, onSelectRoute }: SafeRout
   const blockedRoads = roads.filter(r => r.status === 'blocked');
 
   const [selectedVillageId, setSelectedVillageId] = useState<string>(isolatedVillages[0]?.id || 'v1');
-  const [selectedOrigin, setSelectedOrigin] = useState<string>('Shillong NDRF Command Base');
-  const [originInput, setOriginInput] = useState<string>('Shillong NDRF Command Base');
-  const [destinationInput, setDestinationInput] = useState<string>(targetVillage?.name || '');
+  const DEFAULT_ORIGIN = 'Shillong NDRF Command Base';
+  const [originInput, setOriginInput] = useState<string>(DEFAULT_ORIGIN);
+  const [destinationInput, setDestinationInput] = useState<string>('');
   const [isCalculating, setIsCalculating] = useState<boolean>(false);
   const [activeRoute, setActiveRoute] = useState<{
     origin: string;
@@ -42,7 +42,7 @@ export function SafeRouteCalculator({ roads, villages, onSelectRoute }: SafeRout
       const hours = parseFloat((distanceBase / speedKmH).toFixed(1));
 
       const destinationName = destinationInput?.trim() || targetVillage?.name || 'Unknown Destination';
-      const originName = originInput?.trim() || selectedOrigin;
+      const originName = originInput?.trim() || DEFAULT_ORIGIN;
       const routeResult = {
         origin: originName,
         targetVillage,
