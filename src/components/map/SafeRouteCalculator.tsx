@@ -44,7 +44,11 @@ export function SafeRouteCalculator({ roads, villages, onSelectRoute }: SafeRout
       const destinationName = destinationInput?.trim() || targetVillage?.name || 'Unknown Destination';
       // prefer a matching village object if user selected one by id or typed an exact village name
       const matchedVillage = (villages || []).find(v => v.id === selectedVillageId) || (villages || []).find(v => v.name && v.name.toLowerCase() === (destinationName || '').toLowerCase());
-      const targetVillageObj = matchedVillage || targetVillage || { id: '', name: destinationName || 'Unknown', district: '', population: 0, connectivityStatus: 'isolated' };
+      // Prefer an exact match; if user typed a free-form destination, use that name as the target
+      const targetVillageObj = matchedVillage || (destinationInput?.trim()
+        ? { id: '', name: destinationName, district: '', population: 0, connectivityStatus: 'isolated' }
+        : targetVillage || { id: '', name: destinationName || 'Unknown', district: '', population: 0, connectivityStatus: 'isolated' }
+      );
       const originName = originInput?.trim() || DEFAULT_ORIGIN;
       const routeResult = {
         origin: originName,
