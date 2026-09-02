@@ -42,10 +42,13 @@ export function SafeRouteCalculator({ roads, villages, onSelectRoute }: SafeRout
       const hours = parseFloat((distanceBase / speedKmH).toFixed(1));
 
       const destinationName = destinationInput?.trim() || targetVillage?.name || 'Unknown Destination';
+      // prefer a matching village object if user selected one by id or typed an exact village name
+      const matchedVillage = (villages || []).find(v => v.id === selectedVillageId) || (villages || []).find(v => v.name && v.name.toLowerCase() === (destinationName || '').toLowerCase());
+      const targetVillageObj = matchedVillage || targetVillage || { id: '', name: destinationName || 'Unknown', district: '', population: 0, connectivityStatus: 'isolated' };
       const originName = originInput?.trim() || DEFAULT_ORIGIN;
       const routeResult = {
         origin: originName,
-        targetVillage,
+        targetVillage: targetVillageObj,
         distanceKm: distanceBase,
         estHours: hours,
         status: 'bypassed_blockages' as const,
