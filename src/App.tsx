@@ -44,7 +44,7 @@ export default function App() {
                 <Route path="portal" element={<RoleHome />} />
                 <Route path="dashboard" element={<RequireRole roles={[ 'authority' ]}><DashboardPage /></RequireRole>} />
                 <Route path="map" element={<RequireRole roles={[ 'authority','field_official' ]}><MapPage /></RequireRole>} />
-                <Route path="alerts" element={<RequireRole roles={[ 'authority','field_official' ]}><AlertsPage /></RequireRole>} />
+                <Route path="alerts" element={<RequireRole roles={[ 'authority','field_official','citizen' ]}><AlertsPage /></RequireRole>} />
                 <Route path="analytics" element={<RequireRole roles={[ 'authority' ]}><AnalyticsPage /></RequireRole>} />
                 <Route path="roads" element={<RequireRole roles={[ 'authority' ]}><RoadsPage /></RequireRole>} />
                 <Route path="safe-route" element={<SafeRoutePage />} />
