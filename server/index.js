@@ -164,13 +164,32 @@ app.post('/api/signup', async (req, res) => {
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Missing fields' });
+  appendLog('login-attempt', { email, ip: req.ip || req.headers['x-forwarded-for'] || null });
   const user = await findUserByEmail(email);
-  if (!user) return res.status(400).json({ error: 'Invalid credentials' });
+  if (!user) {
+    appendLog('login-failed', { email, reason: 'not_found' });
+    return res.status(400).json({ error: 'Invalid credentials' });
+  }
   const ok = await bcrypt.compare(password, user.passwordHash || '');
-  if (!ok) return res.status(400).json({ error: 'Invalid credentials' });
+  if (!ok) {
+    appendLog('login-failed', { email, reason: 'bad_password' });
+    return res.status(400).json({ error: 'Invalid credentials' });
+  }
   const normalizedRole = user.role === 'admin' ? 'authority' : user.role;
   const token = generateToken({ id: user.id || user._id, role: normalizedRole, name: user.name, email: user.email });
+  appendLog('login-success', { email, userId: user.id || user._id, role: normalizedRole });
   res.json({ token, user: { id: user.id || user._id, name: user.name, email: user.email, role: normalizedRole } });
+});
+
+// Debug endpoint: show which DB name the server is using (safe, non-sensitive)
+app.get('/api/debug/db', (req, res) => {
+  try {
+    const dbObj = getDb();
+    const dbName = (dbObj && dbObj.databaseName) ? dbObj.databaseName : (process.env.MONGO_DB_NAME || 'local-fallback');
+    res.json({ dbName });
+  } catch (e) {
+    res.json({ error: e.message });
+  }
 });
 
 app.get('/api/me', authMiddleware, async (req, res) => {
