@@ -17,6 +17,8 @@ export function SafeRouteCalculator({ roads, villages, onSelectRoute }: SafeRout
 
   const [selectedVillageId, setSelectedVillageId] = useState<string>(isolatedVillages[0]?.id || 'v1');
   const [selectedOrigin, setSelectedOrigin] = useState<string>('Shillong NDRF Command Base');
+  const [originInput, setOriginInput] = useState<string>('Shillong NDRF Command Base');
+  const [destinationInput, setDestinationInput] = useState<string>(targetVillage?.name || '');
   const [isCalculating, setIsCalculating] = useState<boolean>(false);
   const [activeRoute, setActiveRoute] = useState<{
     origin: string;
@@ -39,17 +41,19 @@ export function SafeRouteCalculator({ roads, villages, onSelectRoute }: SafeRout
       const speedKmH = 28; // mountain emergency speed
       const hours = parseFloat((distanceBase / speedKmH).toFixed(1));
 
+      const destinationName = destinationInput?.trim() || targetVillage?.name || 'Unknown Destination';
+      const originName = originInput?.trim() || selectedOrigin;
       const routeResult = {
-        origin: selectedOrigin,
+        origin: originName,
         targetVillage,
         distanceKm: distanceBase,
         estHours: hours,
         status: 'bypassed_blockages' as const,
         waypoints: [
-          `${selectedOrigin}`,
+          `${originName}`,
           'NH-44 Bypass Junction (Safe)',
           'State Highway 7 Mountain Cut',
-          `Access Road to ${targetVillage.name}`,
+          `Access Road to ${destinationName}`,
         ],
         bypassedHazards: blockedRoads.map(r => r.name),
       };
@@ -59,8 +63,8 @@ export function SafeRouteCalculator({ roads, villages, onSelectRoute }: SafeRout
 
       if (onSelectRoute) {
         onSelectRoute({
-          origin: selectedOrigin,
-          destination: targetVillage.name,
+          origin: originName,
+          destination: destinationName,
           distanceKm: distanceBase,
           estHours: hours,
           bypassedHazards: blockedRoads.map(r => r.name),
@@ -88,24 +92,27 @@ export function SafeRouteCalculator({ roads, villages, onSelectRoute }: SafeRout
         <div className="grid grid-cols-12 gap-4">
           <div className="col-span-5 space-y-1.5">
             <label className="text-xs font-semibold text-main">Emergency Relief Base (Origin)</label>
-            <select
-              value={selectedOrigin}
-              onChange={e => setSelectedOrigin(e.target.value)}
+            <input
+              value={originInput}
+              onChange={e => setOriginInput(e.target.value)}
+              placeholder="Enter origin (e.g. Shillong NDRF Command Base or custom address)"
               className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-xs text-main focus:outline-hidden focus:border-accent-bright"
-            >
-              <option value="Shillong NDRF Command Base">Shillong NDRF Command Base (Meghalaya)</option>
-              <option value="Guwahati Emergency Logistics Center">Guwahati Emergency Center (Assam)</option>
-              <option value="Silchar Air Force Relief Staging Area">Silchar Relief Staging Area</option>
-              <option value="Aizawl Emergency Operations Hub">Aizawl Operations Hub (Mizoram)</option>
-            </select>
+            />
           </div>
 
           <div className="col-span-5 space-y-1.5">
-            <label className="text-xs font-semibold text-main">Target Isolated Village (Destination)</label>
+            <label className="text-xs font-semibold text-main">Destination (village name or address)</label>
+            <input
+              value={destinationInput}
+              onChange={e => setDestinationInput(e.target.value)}
+              placeholder={`Enter destination (e.g. ${targetVillage?.name || 'Village Name'})`}
+              className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-xs text-main focus:outline-hidden focus:border-accent-bright"
+            />
+            <p className="text-[10px] text-slate-500 mt-1">Or choose a listed isolated village below:</p>
             <select
               value={selectedVillageId}
-              onChange={e => setSelectedVillageId(e.target.value)}
-              className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-xs text-main focus:outline-hidden focus:border-accent-bright"
+              onChange={e => { setSelectedVillageId(e.target.value); const v = villages.find(x => x.id === e.target.value); if (v) setDestinationInput(v.name); }}
+              className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-xs text-main focus:outline-hidden focus:border-accent-bright mt-1"
             >
               {isolatedVillages.map(v => (
                 <option key={v.id} value={v.id}>

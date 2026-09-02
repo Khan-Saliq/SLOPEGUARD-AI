@@ -12,7 +12,7 @@ import { EvaluatorExplanationCard } from '../components/ui/EvaluatorExplanationC
 import type { ProblemCategory, RiskLevel, CitizenReport } from '../types';
 import {
   Camera, MapPin, Upload, CheckCircle, Loader2, Shield,
-  Navigation, Image, WifiOff, CloudSync, Sparkles, Video, RefreshCw, AlertTriangle, FileVideo, Eye,
+  Navigation, WifiOff, Sparkles, Video, RefreshCw,
 } from 'lucide-react';
 
 const categories: { value: ProblemCategory; label: string; icon: string }[] = [
@@ -74,7 +74,7 @@ export function ReportHazardPage() {
   const [step, setStep] = useState<Step>('location');
   const [category, setCategory] = useState<ProblemCategory>('landslide');
   const [description, setDescription] = useState('');
-  const [lastOfflineReport, setLastOfflineReport] = useState<CitizenReport | null>(null);
+  
 
   // Captured Media State (Image / Video URL & File)
   const [capturedMedia, setCapturedMedia] = useState<{
@@ -179,7 +179,7 @@ export function ReportHazardPage() {
         gpsAccuracy: location.accuracy,
         severity: aiResult.severity,
       });
-      setLastOfflineReport(savedReport);
+      // saved offline (no local UI readback required)
       } else {
       // Online submission to database
       const input = {

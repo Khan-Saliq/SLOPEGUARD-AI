@@ -25,6 +25,7 @@ const citizenLinks = [
   { to: '/history', icon: History, key: 'history' },
   { to: '/notifications', icon: Bell, key: 'notifications' },
   { to: '/alerts', icon: Bell, key: 'alerts' },
+  { to: '/safe-route', icon: Route, key: 'safeRoute' },
 ];
 
 interface SidebarProps {
@@ -72,6 +73,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       report: 'Citizen Portal',
       reportHazard: 'Report Hazard',
       history: 'My Reports',
+      safeRoute: 'Safe Routes',
       settings: 'Settings',
     };
     return map[key] ?? key;
