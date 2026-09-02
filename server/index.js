@@ -215,6 +215,19 @@ app.post('/api/assignments', authMiddleware, requireRole('authority','field_offi
     await getDb().collection('notifications').insertOne(note);
     sendSse(assigneeId, 'notification', note);
   }
+  // also notify the original report submitter (citizen) that their report was assigned
+  try {
+    const report = await getDb().collection('reports').findOne({ id: reportId });
+    if (report && report.userId) {
+      const creatorId = report.userId;
+      // avoid duplicate if assignee is same as creator
+      if (!assigneeId || assigneeId !== creatorId) {
+        const creatorNote = { id: nanoid(), userId: creatorId, type: 'assignment_created_for_report', message: `Your report ${reportId} has been assigned`, read: false, createdAt: new Date().toISOString(), reportId, reportCreatorId: creatorId, meta: { reportId, assignmentId: assignment.id } };
+        await getDb().collection('notifications').insertOne(creatorNote);
+        sendSse(creatorId, 'notification', creatorNote);
+      }
+    }
+  } catch (e) { appendLog('assign-notify-report-owner-failed', { err: e && e.message }); }
   res.json(assignment);
 });
 
@@ -229,6 +242,15 @@ app.post('/api/assignments/:id/claim', authMiddleware, requireRole('authority','
     await getDb().collection('notifications').insertOne(note);
     sendSse(r.value.creatorId, 'notification', note);
   }
+  // also notify report owner
+  try {
+    const report = await getDb().collection('reports').findOne({ id: r.value.reportId });
+    if (report && report.userId) {
+      const ownerNote = { id: nanoid(), userId: report.userId, type: 'assignment_claimed_for_report', message: `Assignment ${r.value.id} for your report ${r.value.reportId} was claimed`, read: false, createdAt: new Date().toISOString(), reportId: r.value.reportId, reportCreatorId: report.userId, meta: { assignmentId: r.value.id, reportId: r.value.reportId } };
+      await getDb().collection('notifications').insertOne(ownerNote);
+      sendSse(report.userId, 'notification', ownerNote);
+    }
+  } catch (e) { appendLog('claim-notify-report-owner-failed', { err: e && e.message }); }
   res.json(r.value);
 });
 
@@ -246,6 +268,15 @@ app.post('/api/assignments/:id/complete', authMiddleware, requireRole('authority
     await getDb().collection('notifications').insertOne(note);
     sendSse(r.value.creatorId, 'notification', note);
   }
+  // also notify report owner about completion
+  try {
+    const report = await getDb().collection('reports').findOne({ id: r.value.reportId });
+    if (report && report.userId) {
+      const ownerNote = { id: nanoid(), userId: report.userId, type: 'assignment_completed_for_report', message: `Assignment ${r.value.id} for your report ${r.value.reportId} was completed`, read: false, createdAt: new Date().toISOString(), reportId: r.value.reportId, reportCreatorId: report.userId, meta: { assignmentId: r.value.id, reportId: r.value.reportId } };
+      await getDb().collection('notifications').insertOne(ownerNote);
+      sendSse(report.userId, 'notification', ownerNote);
+    }
+  } catch (e) { appendLog('complete-notify-report-owner-failed', { err: e && e.message }); }
   res.json(r.value);
 });
 
@@ -291,9 +322,9 @@ app.post('/api/notifications/:id/read', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/reports', authMiddleware, async (req, res) => {
-  const { category, description, location, severity } = req.body;
+  const { category, description, location, severity, evidenceUrl } = req.body;
   if (!category || !description) return res.status(400).json({ error: 'Missing fields' });
-  const report = { id: nanoid(), userId: req.user.id, userName: req.user.name, category, description, location, severity, timestamp: new Date().toISOString(), status: 'submitted' };
+  const report = { id: nanoid(), userId: req.user.id, userName: req.user.name, category, description, location, severity, evidenceUrl: evidenceUrl || null, timestamp: new Date().toISOString(), status: 'submitted' };
   const created = await insertReportDoc(report);
   res.json(created);
 });

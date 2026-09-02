@@ -46,12 +46,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const login = (tok: string, u: User) => {
     setToken(tok);
     setUser(u);
+    try { localStorage.setItem('userId', u.id); } catch (e) {}
   };
 
   const logout = () => {
     setToken(null);
     setUser(null);
     localStorage.removeItem('token');
+    try { localStorage.removeItem('userId'); } catch (e) {}
   };
 
   return (

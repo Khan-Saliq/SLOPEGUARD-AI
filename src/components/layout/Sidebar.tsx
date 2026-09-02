@@ -24,6 +24,7 @@ const citizenLinks = [
   { to: '/report', icon: Mountain, key: 'reportHazard' },
   { to: '/history', icon: History, key: 'history' },
   { to: '/notifications', icon: Bell, key: 'notifications' },
+  { to: '/alerts', icon: Bell, key: 'alerts' },
 ];
 
 interface SidebarProps {
@@ -49,7 +50,8 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
     es.addEventListener('notification', (ev) => {
       try {
         const d = JSON.parse(ev.data);
-        if (d && d.userId === (window.localStorage.getItem('userId') || null) || true) {
+        const myId = window.localStorage.getItem('userId');
+        if (d && myId && (d.userId === myId || d.reportCreatorId === myId)) {
           setUnreadNotifications(n => n + 1);
         }
       } catch (e) { }

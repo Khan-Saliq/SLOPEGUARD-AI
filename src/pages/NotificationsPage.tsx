@@ -11,9 +11,22 @@ export default function NotificationsPage(){
   const fetchNotifications = async () => {
     setLoading(true);
     try{
+      // fetch only notifications for current user (server already filters by token)
       const res = await fetch('/api/notifications', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
-      setItems(data || []);
+      // ensure citizen sees only assignment notifications related to their reports
+      const me = await fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).catch(() => null);
+      if (me && me.role === 'citizen') {
+        const filtered = (data || []).filter((n: any) => {
+          if (!n.reportId) return false;
+          // show notifications when the notification.reportCreatorId === me.id or notification.userId === me.id
+          if (n.reportCreatorId && n.reportCreatorId === me.id) return true;
+          return n.userId === me.id;
+        });
+        setItems(filtered);
+      } else {
+        setItems(data || []);
+      }
     }catch(e){ console.error(e); }
     setLoading(false);
   };
