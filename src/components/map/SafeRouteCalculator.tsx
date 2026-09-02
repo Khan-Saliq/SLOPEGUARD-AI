@@ -12,10 +12,10 @@ interface SafeRouteCalculatorProps {
 }
 
 export function SafeRouteCalculator({ roads, villages, onSelectRoute }: SafeRouteCalculatorProps) {
-  const isolatedVillages = villages.filter(v => v.connectivityStatus === 'isolated' || v.connectivityStatus === 'partial');
-  const blockedRoads = roads.filter(r => r.status === 'blocked');
+  const isolatedVillages = (villages || []).filter(v => v.connectivityStatus === 'isolated' || v.connectivityStatus === 'partial');
+  const blockedRoads = (roads || []).filter(r => r.status === 'blocked');
 
-  const [selectedVillageId, setSelectedVillageId] = useState<string>(isolatedVillages[0]?.id || 'v1');
+  const [selectedVillageId, setSelectedVillageId] = useState<string>(isolatedVillages[0]?.id || villages?.[0]?.id || '');
   const DEFAULT_ORIGIN = 'Shillong NDRF Command Base';
   const [originInput, setOriginInput] = useState<string>(DEFAULT_ORIGIN);
   const [destinationInput, setDestinationInput] = useState<string>('');
@@ -30,7 +30,7 @@ export function SafeRouteCalculator({ roads, villages, onSelectRoute }: SafeRout
     bypassedHazards: string[];
   } | null>(null);
 
-  const targetVillage = villages.find(v => v.id === selectedVillageId) || villages[0];
+  const targetVillage = (villages || []).find(v => v.id === selectedVillageId) || villages?.[0] || { id: '', name: 'Unknown', district: '', population: 0, connectivityStatus: 'isolated' };
 
   const handleCalculateRoute = () => {
     setIsCalculating(true);
@@ -152,7 +152,7 @@ export function SafeRouteCalculator({ roads, villages, onSelectRoute }: SafeRout
                     <span className="text-xs font-semibold text-dim">Active Emergency Evacuation Route:</span>
                     <span className="text-sm font-bold text-main">{activeRoute.origin}</span>
                     <ArrowRight className="h-3.5 w-3.5 text-accent-bright" />
-                    <span className="text-sm font-bold text-accent-bright">{activeRoute.targetVillage.name}</span>
+                    <span className="text-sm font-bold text-accent-bright">{activeRoute.targetVillage?.name ?? 'Unknown'}</span>
                   </div>
                   <p className="text-[11px] text-dim mt-0.5">
                     Avoids {activeRoute.bypassedHazards.length} active landslide blockages & vulnerable mountain passes
