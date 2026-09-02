@@ -119,7 +119,8 @@ async function connectMongo(uri) {
     if (!uri) throw new Error('MONGO_URL not provided');
     client = new MongoClient(uri, { serverSelectionTimeoutMS: 3000, connectTimeoutMS: 3000 });
     await client.connect();
-    db = client.db();
+    const dbName = process.env.MONGO_DB_NAME || process.env.MONGO_DB || undefined;
+    db = dbName ? client.db(dbName) : client.db();
     await db.collection('users').createIndex({ email: 1 }, { unique: true });
     useLocalFallback = false;
     console.log('✅ Connected to MongoDB Atlas');
