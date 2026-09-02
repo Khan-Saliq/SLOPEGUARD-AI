@@ -1,0 +1,27 @@
+{
+  "name": "landslide-monitor-server",
+  "version": "0.1.0",
+  "main": "index.js",
+  "scripts": {
+    "prestart": "node ensure_mongo_env.js",
+    "start": "node index.js",
+    "predev": "node ensure_mongo_env.js",
+    "dev": "nodemon index.js",
+    "premigrate": "node ensure_mongo_env.js",
+    "migrate": "node migrate-to-mongo.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "lowdb": "^6.0.1",
+    "mongodb": "^5.8.0",
+    "multer": "^1.4.4",
+    "mammoth": "^1.4.18",
+    "nanoid": "^4.0.0",
+    "jsonwebtoken": "^9.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}

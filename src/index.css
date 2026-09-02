@@ -1,0 +1,121 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+@theme {
+  /* Warm terrain palette — earthy, not generic AI blue */
+  --color-base: #100e0c;
+  --color-elevated: #1a1714;
+  --color-card: #221e1a;
+  --color-card-hover: #2a2520;
+  --color-border: #3d3530;
+  --color-main: #f5f0e8;
+  --color-muted: #c4bab0;
+  --color-dim: #8a8078;
+  --color-accent: #5a9a84;
+  --color-accent-bright: #6eb89e;
+  --color-accent-glow: #5a9a8466;
+  --color-accent-warm: #c4845c;
+  --color-accent-warm-dim: #a06848;
+  --color-critical: #b8433a;
+  --color-high: #c4703a;
+  --color-moderate: #b8963a;
+  --color-low: #4d7a5a;
+  --font-sans: "DM Sans", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-base);
+  color: var(--color-main);
+  -webkit-font-smoothing: antialiased;
+}
+
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 0.75rem;
+  z-index: 0;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-dim);
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--color-card) 25%, var(--color-card-hover) 50%, var(--color-card) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes pulse-marker {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.15); }
+}
+
+.pulse-marker {
+  animation: pulse-marker 1.5s ease-in-out infinite;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.gradient-mesh {
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 20%, #5a9a8418 0%, transparent 50%),
+    radial-gradient(ellipse 60% 50% at 90% 80%, #c4845c12 0%, transparent 50%),
+    var(--color-base);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+html.light {
+  --color-base: #f0ebe4;
+  --color-elevated: #faf7f2;
+  --color-card: #ffffff;
+  --color-card-hover: #f5f0e8;
+  --color-border: #d4ccc4;
+  --color-main: #1a1714;
+  --color-muted: #4a4540;
+  --color-dim: #6a6560;
+}
