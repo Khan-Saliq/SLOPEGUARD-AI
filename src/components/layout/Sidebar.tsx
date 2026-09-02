@@ -5,6 +5,8 @@ import {
   Camera, History, Mountain, WifiOff, FileWarning, X,
 } from 'lucide-react';
 import { useApp } from '../../hooks/useApp';
+import { Button } from '../ui/Button';
+import { useNavigate } from 'react-router-dom';
 import { useMonitorData } from '../../hooks/useMonitorData';
 import { useEffect, useState } from 'react';
 
@@ -77,6 +79,13 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       settings: 'Settings',
     };
     return map[key] ?? key;
+  };
+
+  const navigate = useNavigate();
+
+  const handleSignOut = () => {
+    try { logout(); } catch (e) {}
+    navigate('/login');
   };
 
   const navContent = (
@@ -157,6 +166,11 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
             <p className="text-xs font-medium text-main truncate">{user?.name ?? 'Guest User'}</p>
             <p className="text-[10px] text-dim capitalize truncate">{(user?.role ?? 'citizen')} mode</p>
           </div>
+        </div>
+        <div className="mt-3">
+          <Button size="sm" variant="outline" onClick={handleSignOut} className="w-full">
+            Sign out
+          </Button>
         </div>
       </div>
     </div>
