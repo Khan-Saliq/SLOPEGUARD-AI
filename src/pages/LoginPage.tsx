@@ -13,9 +13,15 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     try {
-      const res = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+      if (!email || !password) throw new Error('Please enter email and password');
+      const apiBase = import.meta.env.VITE_API_BASE || '';
+      const url = `${apiBase}/api/login`;
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Login failed');
+      if (!res.ok) {
+        const msg = data?.error || data?.message || `Login failed (${res.status})`;
+        throw new Error(msg);
+      }
       login(data.token, data.user);
       nav('/');
     } catch (err: any) {
