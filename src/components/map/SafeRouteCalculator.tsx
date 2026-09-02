@@ -22,7 +22,7 @@ export function SafeRouteCalculator({ roads, villages, onSelectRoute }: SafeRout
   const [isCalculating, setIsCalculating] = useState<boolean>(false);
   const [activeRoute, setActiveRoute] = useState<{
     origin: string;
-    targetVillage: Village;
+    targetVillage: Village | { id: string; name: string; district: string; population: number; connectivityStatus: string };
     distanceKm: number;
     estHours: number;
     status: 'safe' | 'bypassed_blockages' | 'critical';

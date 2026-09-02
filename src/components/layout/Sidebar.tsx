@@ -36,7 +36,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
-  const { user, isOffline } = useApp();
+  const { user, isOffline, logout } = useApp();
   const { alerts, pendingSyncCount } = useMonitorData();
   const links = (user?.role ?? 'citizen') === 'authority' ? authorityLinks : citizenLinks;
   const pendingAlerts = alerts.filter(a => !a.acknowledged).length;
