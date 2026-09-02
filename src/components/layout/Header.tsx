@@ -1,14 +1,17 @@
-import { Bell, UserCircle, Globe, Sparkles } from 'lucide-react';
+import { Bell, Globe, Sparkles, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { useApp } from '../../hooks/useApp';
 import { useMonitorData } from '../../hooks/useMonitorData';
 import { useLanguage } from '../../hooks/useLanguage';
 import { formatRelativeTime } from '../../lib/utils';
-import { RiskBadge } from '../ui/Badge';
 import { LiveIndicator } from '../ui/LiveIndicator';
 
-export function Header() {
+interface HeaderProps {
+  onToggleMobileMenu?: () => void;
+}
+
+export function Header({ onToggleMobileMenu }: HeaderProps) {
   const { user } = useApp();
   const { notifications, lastUpdated, tickCount } = useMonitorData();
   const { language, setLanguage, t } = useLanguage();
@@ -30,28 +33,46 @@ export function Header() {
   const currentLangObj = languages.find(l => l.code === language) || languages[0];
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/60 bg-elevated/90 backdrop-blur-xl px-6">
-      <div>
-        <h2 className="font-display text-lg font-semibold text-main">
-          {(user?.role ?? 'citizen') === 'authority' ? t('command_center') : t('citizen_portal')}
-        </h2>
-        <p className="text-xs text-dim">
-          SLOPEGUARD AI · {t('live_monitoring')}
-        </p>
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/60 bg-elevated/90 backdrop-blur-xl px-4 sm:px-6">
+      <div className="flex items-center gap-3">
+        {/* Mobile Hamburger Menu Button */}
+        {onToggleMobileMenu && (
+          <button
+            type="button"
+            onClick={onToggleMobileMenu}
+            className="md:hidden rounded-lg border border-border/60 bg-card-hover/60 p-2 text-main hover:bg-card-hover transition-colors"
+            aria-label="Open Mobile Navigation Menu"
+          >
+            <Menu className="h-5 w-5 text-accent-bright" />
+          </button>
+        )}
+
+        <div>
+          <h2 className="font-display text-base sm:text-lg font-semibold text-main truncate max-w-[180px] sm:max-w-none">
+            {(user?.role ?? 'citizen') === 'authority' ? t('command_center') : t('citizen_portal')}
+          </h2>
+          <p className="text-[10px] sm:text-xs text-dim hidden xs:block">
+            SLOPEGUARD AI · {t('live_monitoring')}
+          </p>
+        </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        <LiveIndicator lastUpdated={lastUpdated} tickCount={tickCount} />
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className="hidden sm:block">
+          <LiveIndicator lastUpdated={lastUpdated} tickCount={tickCount} />
+        </div>
 
         {/* Regional Multilingual Selector Dropdown */}
         <div className="relative">
           <button
             type="button"
             onClick={() => setShowLangMenu(!showLangMenu)}
-            className="flex items-center gap-1.5 rounded-lg border border-border bg-card-hover/60 px-2.5 py-1.5 text-xs text-main hover:bg-card-hover transition-colors"
+            className="flex items-center gap-1.5 rounded-lg border border-border bg-card-hover/60 px-2 sm:px-2.5 py-1.5 text-xs text-main hover:bg-card-hover transition-colors"
           >
-            <Globe className="h-4 w-4 text-accent-bright" />
-            <span className="font-medium text-[11px]">{currentLangObj.flag} {currentLangObj.name.split(' ')[0]}</span>
+            <Globe className="h-4 w-4 text-accent-bright shrink-0" />
+            <span className="font-medium text-[10px] sm:text-[11px] truncate max-w-[70px] sm:max-w-none">
+              {currentLangObj.flag} {currentLangObj.name.split(' ')[0]}
+            </span>
           </button>
 
           <AnimatePresence>
@@ -99,11 +120,11 @@ export function Header() {
           <button
             type="button"
             onClick={() => setShowNotifs(!showNotifs)}
-            className="relative rounded-lg p-2 text-dim hover:bg-card-hover hover:text-muted transition-colors"
+            className="relative rounded-lg border border-border bg-card-hover/60 p-2 text-dim hover:bg-card-hover hover:text-main transition-colors"
           >
             <Bell className="h-4 w-4" />
             {unread > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-critical text-[10px] font-bold text-main">
+              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-critical text-[10px] font-bold text-white">
                 {unread}
               </span>
             )}
@@ -115,34 +136,31 @@ export function Header() {
                 initial={{ opacity: 0, y: 8, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                className="absolute right-0 top-full mt-2 w-80 rounded-xl border border-border bg-card shadow-2xl z-50"
+                className="absolute right-0 top-full mt-2 w-80 max-w-[90vw] rounded-xl border border-border bg-card shadow-2xl p-3 z-50 space-y-2"
               >
-                <div className="border-b border-border px-4 py-3">
-                  <h3 className="text-sm font-semibold text-main">Notifications</h3>
+                <div className="flex items-center justify-between border-b border-border pb-2">
+                  <span className="text-xs font-bold text-main">System Notifications</span>
+                  <span className="text-[10px] text-dim">{notifications.length} total</span>
                 </div>
-                <div className="max-h-64 overflow-y-auto">
-                  {notifications.map(n => (
-                    <div key={n.id} className={`border-b border-border/50 px-4 py-3 ${!n.read ? 'bg-accent/5' : ''}`}>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-main">{n.title}</span>
-                        <RiskBadge level={n.type} />
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {notifications.length === 0 ? (
+                    <p className="text-xs text-dim py-3 text-center">No active notifications</p>
+                  ) : (
+                    notifications.map(n => (
+                      <div key={n.id} className="rounded-lg bg-card-hover/40 p-2 text-xs border border-border/40">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-main">{n.title}</span>
+                          <span className="text-[10px] text-accent-bright font-mono uppercase bg-accent/10 px-1.5 py-0.5 rounded">{n.type}</span>
+                        </div>
+                        <p className="text-dim text-[11px] mt-1">{n.message}</p>
+                        <p className="text-[9px] text-dim mt-1 font-mono">{formatRelativeTime(n.timestamp)}</p>
                       </div>
-                      <p className="mt-1 text-xs text-dim">{n.message}</p>
-                      <p className="mt-1 text-[10px] text-dim/70">{formatRelativeTime(n.timestamp)}</p>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
-
-        <div className="flex items-center gap-2 rounded-lg border border-border bg-card/80 px-3 py-1.5">
-          <UserCircle className="h-5 w-5 text-accent-bright" />
-          <div>
-            <p className="text-xs font-medium text-main">{user?.name ?? 'Guest'}</p>
-            <p className="text-[10px] text-dim capitalize">{(user?.role ?? 'guest').replace('_', ' ')}</p>
-          </div>
         </div>
       </div>
     </header>

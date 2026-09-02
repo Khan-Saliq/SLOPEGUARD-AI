@@ -1,10 +1,9 @@
 import { NavLink } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Map, Bell, BarChart3, Route, Siren,
-  Camera, History, Settings, Mountain, WifiOff, FileWarning,
+  Camera, History, Mountain, WifiOff, FileWarning, X,
 } from 'lucide-react';
-import { cn } from '../../lib/utils';
 import { useApp } from '../../hooks/useApp';
 import { useMonitorData } from '../../hooks/useMonitorData';
 import { useEffect, useState } from 'react';
@@ -27,7 +26,12 @@ const citizenLinks = [
   { to: '/notifications', icon: Bell, key: 'notifications' },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
+}
+
+export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const { user, isOffline } = useApp();
   const { alerts, pendingSyncCount } = useMonitorData();
   const links = (user?.role ?? 'citizen') === 'authority' ? authorityLinks : citizenLinks;
@@ -63,7 +67,7 @@ export function Sidebar() {
       roads: 'Roads',
       emergency: 'Emergency',
       assignments: 'Assignments',
-      report: 'Citizen',
+      report: 'Citizen Portal',
       reportHazard: 'Report Hazard',
       history: 'My Reports',
       settings: 'Settings',
@@ -71,16 +75,30 @@ export function Sidebar() {
     return map[key] ?? key;
   };
 
-  return (
-    <aside className="fixed left-0 top-0 z-40 flex h-full w-64 flex-col border-r border-border/60 bg-elevated/95 backdrop-blur-xl">
-      <div className="flex items-center gap-3 border-b border-border/60 px-5 py-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-transparent overflow-hidden">
-          <img src="/logo.png" alt="SLOPEGUARD AI" className="h-10 w-10 object-contain drop-shadow-sm" />
+  const navContent = (
+    <div className="flex h-full flex-col bg-elevated/95 backdrop-blur-xl">
+      {/* Brand Header */}
+      <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl overflow-hidden shrink-0">
+            <img src="/logo.png" alt="SLOPEGUARD AI" className="h-9 w-9 object-contain drop-shadow-sm" />
+          </div>
+          <div>
+            <h1 className="font-display text-sm font-bold text-main leading-tight">SLOPEGUARD AI</h1>
+            <p className="text-[10px] text-dim">Risk Monitor · Live</p>
+          </div>
         </div>
-        <div>
-          <h1 className="font-display text-sm font-bold text-main leading-tight">SLOPEGUARD AI</h1>
-          <p className="text-[10px] text-dim">Risk Monitor · Live</p>
-        </div>
+
+        {/* Mobile Close X Button */}
+        {onMobileClose && (
+          <button
+            type="button"
+            onClick={onMobileClose}
+            className="md:hidden rounded-lg p-1.5 text-dim hover:bg-card-hover hover:text-main"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       {isOffline && (
@@ -92,57 +110,84 @@ export function Sidebar() {
         </div>
       )}
 
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      {/* Navigation Links */}
+      <nav className="flex-1 space-y-1.5 px-3 py-4 overflow-y-auto">
         {links.map(({ to, icon: Icon, key }) => (
           <NavLink
             key={to}
             to={to}
+            onClick={() => onMobileClose?.()}
             className={({ isActive }) =>
-              cn(
-                'relative group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
+              `flex items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-medium transition-all ${
                 isActive
-                  ? 'bg-accent/15 text-accent-bright shadow-sm'
-                  : 'text-dim hover:bg-card-hover hover:text-muted',
-              )
+                  ? 'bg-accent/20 text-accent-bright font-bold border border-accent/30 shadow-sm'
+                  : 'text-dim hover:bg-card-hover/60 hover:text-main'
+              }`
             }
           >
-            {({ isActive }) => (
-              <>
-                {isActive && (
-                  <motion.div
-                    layoutId="sidebar-active"
-                    className="absolute left-0 h-8 w-1 rounded-r-full bg-accent"
-                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                  />
-                )}
-                <Icon className="h-4 w-4" />
-                {label(key)}
-                {to === '/alerts' && pendingAlerts > 0 && (
-                  <span className="ml-auto rounded-full bg-critical/20 px-1.5 py-0.5 text-[10px] font-bold text-critical">
-                    {pendingAlerts}
-                  </span>
-                )}
-                {to === '/notifications' && unreadNotifications > 0 && (
-                  <span className="ml-auto rounded-full bg-accent-warm/70 px-2 py-0.5 text-[10px] font-bold text-white">{unreadNotifications}</span>
-                )}
-              </>
+            <div className="flex items-center gap-3">
+              <Icon className="h-4 w-4 shrink-0 text-accent-bright" />
+              <span>{label(key)}</span>
+            </div>
+            {key === 'alerts' && pendingAlerts > 0 && (
+              <span className="rounded-full bg-critical/20 px-2 py-0.5 text-[10px] font-bold text-critical">
+                {pendingAlerts}
+              </span>
+            )}
+            {key === 'notifications' && unreadNotifications > 0 && (
+              <span className="rounded-full bg-accent-warm/20 px-2 py-0.5 text-[10px] font-bold text-accent-warm">
+                {unreadNotifications}
+              </span>
             )}
           </NavLink>
         ))}
       </nav>
 
-      <div className="border-t border-border/60 p-3">
-        <NavLink
-          to="/settings"
-          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-dim hover:bg-card-hover hover:text-muted transition-colors"
-        >
-          <Settings className="h-4 w-4" />
-          Settings
-          {unreadNotifications > 0 && (
-            <span className="ml-auto rounded-full bg-accent-warm/70 px-2 py-0.5 text-[10px] font-bold text-white">{unreadNotifications}</span>
-          )}
-        </NavLink>
+      {/* User Role Footer */}
+      <div className="border-t border-border/60 p-4">
+        <div className="flex items-center gap-3 rounded-xl bg-card-hover/40 p-2.5 border border-border/40">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/20 text-accent-bright font-bold text-xs shrink-0">
+            {(user?.name ?? 'U')[0].toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-main truncate">{user?.name ?? 'Guest User'}</p>
+            <p className="text-[10px] text-dim capitalize truncate">{(user?.role ?? 'citizen')} mode</p>
+          </div>
+        </div>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Static Sidebar (Visible on md and larger) */}
+      <aside className="hidden md:flex fixed left-0 top-0 z-40 h-full w-64 flex-col border-r border-border/60">
+        {navContent}
+      </aside>
+
+      {/* Mobile Drawer (Visible on mobile when open) */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onMobileClose}
+              className="md:hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
+            />
+            <motion.aside
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 250 }}
+              className="md:hidden fixed left-0 top-0 z-50 h-full w-72 max-w-[85vw] border-r border-border/60 shadow-2xl"
+            >
+              {navContent}
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

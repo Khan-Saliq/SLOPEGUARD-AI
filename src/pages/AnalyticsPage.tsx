@@ -154,7 +154,7 @@ export function AnalyticsPage() {
       </div>
 
       {/* Row 1: Environmental Time-Series & Risk Trajectory Graphs */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
         <div>
           <RainfallChart selectedZone={selectedZone} />
           {showEvaluatorExplanations && (
@@ -183,12 +183,12 @@ export function AnalyticsPage() {
       </div>
 
       {/* Row 2: District Distribution Area Diagram & Multi-Factor Radar Diagram */}
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
         {/* District Risk Distribution Diagram */}
-        <div className="col-span-7">
+        <div className="col-span-1 lg:col-span-7">
           <Card className="h-full flex flex-col justify-between">
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+              <CardTitle className="flex items-center justify-between flex-wrap gap-2">
                 <span className="flex items-center gap-2">
                   <BarChart3 className="h-4 w-4 text-accent-bright" />
                   District-wise Risk Distribution Diagram {selectedZone && `(${selectedZone.location.district})`}
@@ -217,10 +217,10 @@ export function AnalyticsPage() {
         </div>
 
         {/* Multi-Criteria Feature Importance Radar Chart */}
-        <div className="col-span-5">
+        <div className="col-span-1 lg:col-span-5">
           <Card className="h-full flex flex-col justify-between">
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+              <CardTitle className="flex items-center justify-between flex-wrap gap-2">
                 <span className="flex items-center gap-2">
                   <PieChart className="h-4 w-4 text-accent-warm" />
                   Multi-Criteria Risk Factor Radar Diagram {selectedZone && `(${selectedZone.name})`}
@@ -259,7 +259,7 @@ export function AnalyticsPage() {
       {/* Row 3: Location-wise Horizontal Bar Chart Diagram */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
+          <CardTitle className="flex items-center justify-between flex-wrap gap-2">
             <span className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-low" />
               Location-wise Risk Scores Bar Diagram {selectedZone && `(Highlighting ${selectedZone.name})`}
@@ -275,7 +275,7 @@ export function AnalyticsPage() {
               <BarChart data={riskScoreData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                 <XAxis type="number" domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 10 }} />
-                <YAxis dataKey="name" type="category" width={140} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                <YAxis dataKey="name" type="category" width={110} tick={{ fill: '#94a3b8', fontSize: 9 }} />
                 <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }} />
                 <Bar dataKey="score" radius={[0, 4, 4, 0]}>
                   {riskScoreData.map((entry, index) => (
@@ -304,7 +304,7 @@ export function AnalyticsPage() {
       </Card>
 
       {/* Row 4: Mathematical Scoring Model, Telemetry & Prediction Confidence Grid */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
         {/* Mathematical Risk Scoring Algorithm Card */}
         <Card className="h-full flex flex-col justify-between">
           <CardHeader>

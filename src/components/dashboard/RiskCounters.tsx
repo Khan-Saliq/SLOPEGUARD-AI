@@ -21,14 +21,14 @@ export function RiskCounters() {
   }));
 
   return (
-    <div className="grid grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
       {counts.map(({ key, icon: Icon, label, count }, i) => (
         <motion.div
           key={key}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.1 }}
-          className="relative overflow-hidden rounded-xl border border-border/60 bg-card/90 p-4"
+          className="relative overflow-hidden rounded-xl border border-border/60 bg-card/90 p-3 sm:p-4"
         >
           <div
             className="absolute inset-0 opacity-10"
@@ -36,12 +36,12 @@ export function RiskCounters() {
           />
           <div className="relative flex items-center justify-between gap-2">
             <div className="flex-1">
-              <p className="text-xs text-dim font-medium">{label} Risk</p>
+              <p className="text-[11px] sm:text-xs text-dim font-medium">{label} Risk</p>
               <motion.p
                 key={`${count}-${tickCount}`}
                 initial={{ scale: 1.15, color: RISK_COLORS[key] }}
                 animate={{ scale: 1, color: 'var(--color-main)' }}
-                className="text-3xl font-bold text-main mt-1 font-display"
+                className="text-2xl sm:text-3xl font-bold text-main mt-1 font-display"
               >
                 {count}
               </motion.p>

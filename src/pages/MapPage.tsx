@@ -123,9 +123,9 @@ export function MapPage() {
       )}
 
       {/* GIS Map & Drilldown Grid */}
-      <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-9">
-          <Card className="h-[calc(100vh-280px)]">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="col-span-1 lg:col-span-9">
+          <Card className="h-[320px] sm:h-[450px] lg:h-[calc(100vh-280px)]">
             <CardContent className="p-2 h-full">
               {view3D ? (
                 <Terrain3D zones={filteredZones} className="h-full rounded-lg" />
@@ -156,7 +156,7 @@ export function MapPage() {
           )}
         </div>
 
-        <div className="col-span-3 space-y-4">
+        <div className="col-span-1 lg:col-span-3 space-y-4">
           <Card>
             <CardHeader><CardTitle>Region Drill-Down</CardTitle></CardHeader>
             <CardContent>

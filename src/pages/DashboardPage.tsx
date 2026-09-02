@@ -145,12 +145,12 @@ export function DashboardPage() {
       />
 
       {/* GIS Spatial Map & 3D Orbit / Alert Cards Row */}
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
         {/* GIS Interactive Risk Map */}
-        <div className="col-span-8">
+        <div className="col-span-1 lg:col-span-8">
           <Card className="flex flex-col">
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+              <CardTitle className="flex items-center justify-between flex-wrap gap-2">
                 <span className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-accent-bright" />
                   GIS Risk Map — Click Any Point to Focus All Dashboard Telemetry
@@ -161,7 +161,7 @@ export function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="h-[360px] rounded-lg overflow-hidden border border-border/40">
+              <div className="h-[280px] sm:h-[360px] rounded-lg overflow-hidden border border-border/40">
                 <GISMap
                   zones={riskZones}
                   roads={roads}
@@ -189,7 +189,7 @@ export function DashboardPage() {
         </div>
 
         {/* Right Column: 3D Risk Orbit & Automated Alert Cards */}
-        <div className="col-span-4 space-y-6">
+        <div className="col-span-1 lg:col-span-4 space-y-4 lg:space-y-6">
           {/* 3D Risk Orbit Particle Visualizer */}
           <Card>
             <CardHeader>
@@ -243,12 +243,12 @@ export function DashboardPage() {
       </div>
 
       {/* 3D Elevation Terrain Simulation & Environmental Graphs Row */}
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
         {/* 3D Digital Elevation Terrain Mesh */}
-        <div className="col-span-5">
+        <div className="col-span-1 lg:col-span-5">
           <Card className="h-full flex flex-col justify-between">
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+              <CardTitle className="flex items-center justify-between flex-wrap gap-2">
                 <span className="flex items-center gap-2">
                   <Layers className="h-4 w-4 text-accent-bright" />
                   3D Terrain · {selectedZone ? selectedZone.name : 'Rain Simulation'}
@@ -259,7 +259,7 @@ export function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 flex-1 flex flex-col justify-between">
-              <div className="h-[240px] rounded-lg overflow-hidden border border-border/40">
+              <div className="h-[200px] sm:h-[240px] rounded-lg overflow-hidden border border-border/40">
                 <Terrain3D zones={displayZones} showRain className="h-full w-full" />
               </div>
               {showEvaluatorExplanations && (
@@ -276,8 +276,8 @@ export function DashboardPage() {
         </div>
 
         {/* Environmental Time-Series & Risk Trend Graphs */}
-        <div className="col-span-7 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="col-span-1 lg:col-span-7 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <RainfallChart selectedZone={selectedZone} />
               {showEvaluatorExplanations && (
@@ -308,9 +308,9 @@ export function DashboardPage() {
       </div>
 
       {/* District Summary, High Risk Zones & Citizen Evidence Intelligence Row */}
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
         {/* District Risk Summary Breakdown */}
-        <div className="col-span-4">
+        <div className="col-span-1 lg:col-span-4">
           <Card className="h-full flex flex-col justify-between">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -362,7 +362,7 @@ export function DashboardPage() {
         </div>
 
         {/* AI Prioritized High-Risk Hotspots */}
-        <div className="col-span-4">
+        <div className="col-span-1 lg:col-span-4">
           <Card className="h-full flex flex-col justify-between">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -424,7 +424,7 @@ export function DashboardPage() {
         </div>
 
         {/* AI-Verified Citizen Field Evidence Intelligence */}
-        <div className="col-span-4">
+        <div className="col-span-1 lg:col-span-4">
           <Card className="h-full flex flex-col justify-between">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

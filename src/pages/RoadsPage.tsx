@@ -67,9 +67,9 @@ export function RoadsPage() {
       </div>
 
       {/* GIS Spatial Road Network & Blocked Highways Grid */}
-      <div className="grid grid-cols-12 gap-6">
-        <div className="col-span-7">
-          <Card className="h-[450px]">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
+        <div className="col-span-1 lg:col-span-7">
+          <Card className="h-[300px] sm:h-[450px]">
             <CardHeader><CardTitle className="flex items-center gap-2"><Route className="h-4 w-4 text-accent-bright" /> GIS Spatial Road Network Map</CardTitle></CardHeader>
             <CardContent className="h-[calc(100%-60px)]">
               <GISMap roads={roads} height="100%" showHeatmap={false} />
@@ -77,7 +77,7 @@ export function RoadsPage() {
           </Card>
         </div>
 
-        <div className="col-span-5 space-y-4">
+        <div className="col-span-1 lg:col-span-5 space-y-4">
           <Card>
             <CardHeader><CardTitle className="text-red-400 flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Active Blocked Highways</CardTitle></CardHeader>
             <CardContent>
