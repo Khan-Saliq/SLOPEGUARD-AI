@@ -25,7 +25,7 @@ import SignupPage from './pages/SignupPage';
 function RoleHome() {
   const { user } = useApp();
   if (!user) return <Navigate to="/login" replace />;
-  return <Navigate to={user.role === 'authority' ? '/dashboard' : '/citizen'} replace />;
+  return <Navigate to={['authority', 'super_admin'].includes(user.role) ? '/dashboard' : '/citizen'} replace />;
 }
 
 export default function App() {
@@ -42,15 +42,15 @@ export default function App() {
               <Route path="/signup" element={<SignupPage />} />
               <Route element={<Layout />}>
                 <Route path="portal" element={<RoleHome />} />
-                <Route path="dashboard" element={<RequireRole roles={[ 'authority' ]}><DashboardPage /></RequireRole>} />
-                <Route path="map" element={<RequireRole roles={[ 'authority','field_official' ]}><MapPage /></RequireRole>} />
+                <Route path="dashboard" element={<RequireRole roles={[ 'authority', 'super_admin' ]}><DashboardPage /></RequireRole>} />
+                <Route path="map" element={<RequireRole roles={[ 'authority', 'super_admin','field_official' ]}><MapPage /></RequireRole>} />
                 <Route path="alerts" element={<RequireRole roles={[ 'authority','field_official','citizen' ]}><AlertsPage /></RequireRole>} />
-                <Route path="analytics" element={<RequireRole roles={[ 'authority' ]}><AnalyticsPage /></RequireRole>} />
-                <Route path="roads" element={<RequireRole roles={[ 'authority' ]}><RoadsPage /></RequireRole>} />
+                <Route path="analytics" element={<RequireRole roles={[ 'authority', 'super_admin' ]}><AnalyticsPage /></RequireRole>} />
+                <Route path="roads" element={<RequireRole roles={[ 'authority', 'super_admin' ]}><RoadsPage /></RequireRole>} />
                 <Route path="safe-route" element={<SafeRoutePage />} />
                 <Route path="assignments" element={<RequireRole roles={[ 'authority','field_official' ]}><AssignmentsPage /></RequireRole>} />
                 <Route path="notifications" element={<NotificationsPage />} />
-                <Route path="emergency" element={<RequireRole roles={[ 'authority','field_official' ]}><EmergencyPage /></RequireRole>} />
+                <Route path="emergency" element={<RequireRole roles={[ 'authority', 'super_admin','field_official' ]}><EmergencyPage /></RequireRole>} />
                 <Route path="citizen" element={<CitizenHomePage />} />
                 <Route path="report" element={<ReportHazardPage />} />
                 <Route path="history" element={<ReportHistoryPage />} />

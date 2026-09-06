@@ -432,11 +432,11 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
 
   // Derives district summaries dynamically from active risk zones
   const districts = useMemo(() => recalcDistricts(riskZones, []), [riskZones]);
-  const { token } = useApp();
+  const { token, user } = useApp();
 
   // Refresh risk zones with real environmental data and ML predictions
   const refreshRiskZones = useCallback(async () => {
-    if (!token) return;
+    if (!token || !user || !['authority', 'super_admin'].includes(user.role)) return;
     setIsLoading(true);
     try {
       const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -481,7 +481,7 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [token]);
+  }, [token, user]);
 
   useEffect(() => {
     if (!token) return;
@@ -510,8 +510,8 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
       .catch(() => {});
 
     // Refresh with real data immediately
-    refreshRiskZones();
-  }, [token, refreshRiskZones]);
+    if (['authority', 'super_admin'].includes(user?.role || '')) refreshRiskZones();
+  }, [token, user, refreshRiskZones]);
 
   const liveTick = useCallback(() => {
     // For demo/simulation mode: jitter environmental data
