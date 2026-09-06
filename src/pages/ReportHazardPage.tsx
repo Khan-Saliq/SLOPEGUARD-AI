@@ -15,7 +15,7 @@ import { lookupPlaceName } from '../lib/placeLookup';
 import type { ProblemCategory, RiskLevel } from '../types';
 import {
   Camera, MapPin, CheckCircle, Loader2, Shield,
-  Navigation, WifiOff, Sparkles, Video,
+  Navigation, WifiOff, Sparkles,
   XCircle, Info, Upload, Image as ImageIcon, CheckCircle2, RefreshCw
 } from 'lucide-react';
 
@@ -33,7 +33,6 @@ const SAMPLE_HAZARD_PHOTO = 'https://images.unsplash.com/photo-1506744038136-462
 const SAMPLE_NON_HAZARD_PHOTO = 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=800&q=80'; // Indoor non-hazard photo
 
 type Step = 'location' | 'capture' | 'ai_analysis' | 'review' | 'submitted';
-type CaptureMode = 'photo' | 'video' | null;
 
 interface AIResult {
   evidenceAssessment: string;
@@ -57,13 +56,13 @@ export function ReportHazardPage() {
   const [step, setStep] = useState<Step>('location');
   const [category, setCategory] = useState<ProblemCategory>('landslide');
   const [description, setDescription] = useState('');
-  const [captureMode, setCaptureMode] = useState<CaptureMode>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
 
-  // Captured Media State
+  // Captured Media State (Photo only)
   const [capturedMedia, setCapturedMedia] = useState<{
     blob: Blob;
     url: string;
-    type: 'image' | 'video';
+    type: 'image';
     timestamp: Date;
     metadata: any;
   } | null>(null);
@@ -143,16 +142,16 @@ export function ReportHazardPage() {
     );
   };
 
-  // Handle camera capture or sample photo selection
+  // Handle camera photo capture or sample photo selection
   const handleMediaSelected = (data: {
     blob: Blob;
     url: string;
-    type: 'image' | 'video';
+    type: 'image';
     timestamp: Date;
     metadata: any;
   }) => {
     setCapturedMedia(data);
-    setCaptureMode(null);
+    setIsCameraOpen(false);
     setStep('ai_analysis');
     performAIInspection(data);
   };
@@ -189,18 +188,17 @@ export function ReportHazardPage() {
     }
   };
 
-  // File Upload Helper
+  // File Upload Helper (Images only)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const url = URL.createObjectURL(file);
-    const type = file.type.startsWith('video') ? 'video' : 'image';
 
     handleMediaSelected({
       blob: file,
       url,
-      type,
+      type: 'image',
       timestamp: new Date(),
       metadata: {
         captureMethod: 'file_upload',
@@ -237,7 +235,7 @@ export function ReportHazardPage() {
       // Attempt optional backend inspection sync
       try {
         const formData = new FormData();
-        formData.append('file', media.blob, `evidence-${Date.now()}.${media.type === 'video' ? 'webm' : 'jpg'}`);
+        formData.append('file', media.blob, `evidence-${Date.now()}.jpg`);
         const token = localStorage.getItem('token');
         await fetch('/api/upload', {
           method: 'POST',
@@ -322,7 +320,7 @@ export function ReportHazardPage() {
 
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center justify-between">
-          <span>Report Hazard — AI Image Verification</span>
+          <span>Report Hazard — Photo Verification</span>
           {!isOnline && (
             <span className="text-xs font-mono bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-full border border-amber-500/30 flex items-center gap-1">
               <WifiOff className="h-3 w-3" /> Offline Mode
@@ -330,7 +328,7 @@ export function ReportHazardPage() {
           )}
         </h1>
         <p className="text-sm text-slate-400 mt-1">
-          Capture or upload hazard photo/video. ML model verifies hill, slope, rock, or water terrain before forwarding to admin.
+          Capture or upload a hazard photo. ML model verifies hill, slope, rock, or water terrain before forwarding to admin.
         </p>
       </div>
 
@@ -415,14 +413,14 @@ export function ReportHazardPage() {
                 </div>
 
                 <Button className="w-full bg-accent-bright text-black font-bold" onClick={() => setStep('capture')}>
-                  Continue to Photo / Video Capture <Camera className="h-4 w-4 ml-2" />
+                  Continue to Photo Capture <Camera className="h-4 w-4 ml-2" />
                 </Button>
               </CardContent>
             </Card>
           </motion.div>
         )}
 
-        {/* Step 2: Camera / Sample / File Capture */}
+        {/* Step 2: Camera / Sample / File Photo Capture */}
         {step === 'capture' && (
           <motion.div
             key="capture"
@@ -432,30 +430,22 @@ export function ReportHazardPage() {
           >
             <Card>
               <CardContent className="pt-5 space-y-4">
-                {captureMode === null && !capturedMedia && (
+                {!isCameraOpen && !capturedMedia && (
                   <>
                     <div className="space-y-4">
                       <div className="rounded-xl border-2 border-dashed border-slate-700 bg-slate-900/50 p-6 text-center space-y-4">
                         <div className="flex justify-center gap-4">
-                          <Camera className="h-10 w-10 text-accent-bright" />
-                          <Video className="h-10 w-10 text-accent-warm" />
-                          <Upload className="h-10 w-10 text-emerald-400" />
+                          <Camera className="h-12 w-12 text-accent-bright" />
+                          <Upload className="h-12 w-12 text-emerald-400" />
                         </div>
-                        <p className="text-base text-white font-semibold">Choose Hazard Capture Option</p>
+                        <p className="text-base text-white font-semibold">Choose Photo Option</p>
                         <p className="text-xs text-slate-400">
-                          Use live device camera, upload a photo file, or select a sample photo for AI inspection
+                          Use your live device camera, upload an image file, or select a sample photo for AI inspection
                         </p>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto">
-                          <Button onClick={() => setCaptureMode('photo')} className="flex items-center justify-center gap-2">
-                            <Camera className="h-4 w-4" /> Live Camera Photo
-                          </Button>
-                          <Button
-                            onClick={() => setCaptureMode('video')}
-                            variant="secondary"
-                            className="flex items-center justify-center gap-2"
-                          >
-                            <Video className="h-4 w-4" /> Live Video Record
+                        <div className="max-w-md mx-auto">
+                          <Button onClick={() => setIsCameraOpen(true)} className="w-full flex items-center justify-center gap-2 bg-accent-bright text-black font-bold">
+                            <Camera className="h-5 w-5" /> Live Camera Photo Capture
                           </Button>
                         </div>
 
@@ -488,8 +478,8 @@ export function ReportHazardPage() {
                           <label className="p-2.5 rounded-lg border border-slate-700 bg-slate-800/60 hover:bg-slate-800 text-slate-200 font-medium flex flex-col items-center gap-1 cursor-pointer transition-all">
                             <Upload className="h-4 w-4 text-accent-bright" />
                             <span>Upload Image File</span>
-                            <span className="text-[10px] text-slate-400 font-mono">(Choose local file)</span>
-                            <input type="file" accept="image/*,video/*" onChange={handleFileUpload} className="hidden" />
+                            <span className="text-[10px] text-slate-400 font-mono">(Choose local photo)</span>
+                            <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
                           </label>
                         </div>
                       </div>
@@ -517,11 +507,10 @@ export function ReportHazardPage() {
                   </>
                 )}
 
-                {captureMode !== null && (
+                {isCameraOpen && (
                   <CameraCapture
-                    mode={captureMode}
                     onCapture={handleMediaSelected}
-                    onCancel={() => setCaptureMode(null)}
+                    onCancel={() => setIsCameraOpen(false)}
                   />
                 )}
               </CardContent>
@@ -541,11 +530,7 @@ export function ReportHazardPage() {
               <CardContent className="pt-8 pb-8 text-center space-y-4">
                 {capturedMedia && (
                   <div className="relative max-w-xs mx-auto rounded-xl overflow-hidden border border-accent-bright/60 shadow-lg">
-                    {capturedMedia.type === 'video' ? (
-                      <video src={capturedMedia.url} className="h-44 w-full object-cover" />
-                    ) : (
-                      <img src={capturedMedia.url} alt="Inspecting" className="h-44 w-full object-cover" />
-                    )}
+                    <img src={capturedMedia.url} alt="Inspecting" className="h-44 w-full object-cover" />
                     <motion.div
                       animate={{ top: ['0%', '100%', '0%'] }}
                       transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut' }}
@@ -561,7 +546,7 @@ export function ReportHazardPage() {
                 >
                   <Loader2 className="h-10 w-10 text-accent-bright" />
                 </motion.div>
-                <h3 className="text-lg font-semibold text-white">ML Hazard Model Inspection</h3>
+                <h3 className="text-lg font-semibold text-white">ML Hazard Photo Inspection</h3>
                 <p className="text-sm text-slate-400">
                   Extracting terrain vectors, verifying hill/slope/water features & calculating confidence score...
                 </p>
@@ -609,15 +594,9 @@ export function ReportHazardPage() {
 
                 {capturedMedia && (
                   <div className="flex items-center gap-3 rounded-lg bg-black/40 p-2.5 border border-border/40">
-                    {capturedMedia.type === 'video' ? (
-                      <video src={capturedMedia.url} className="h-20 w-24 object-cover rounded" />
-                    ) : (
-                      <img src={capturedMedia.url} alt="Evidence" className="h-20 w-24 object-cover rounded" />
-                    )}
+                    <img src={capturedMedia.url} alt="Evidence" className="h-20 w-24 object-cover rounded" />
                     <div>
-                      <p className="text-xs font-semibold text-white">
-                        {capturedMedia.type === 'video' ? 'Video Evidence' : 'Photo Evidence'}
-                      </p>
+                      <p className="text-xs font-semibold text-white">Photo Evidence</p>
                       <p className="text-[10px] text-slate-400">
                         Captured: {capturedMedia.timestamp.toLocaleString()}
                       </p>
@@ -784,4 +763,5 @@ export function ReportHazardPage() {
     </div>
   );
 }
+
 

@@ -1,12 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Camera, Video, X, Check, AlertCircle, RotateCcw, Loader2 } from 'lucide-react';
+import { Camera, X, Check, AlertCircle, RotateCcw, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 interface CameraCaptureProps {
-  onCapture: (data: { blob: Blob; url: string; type: 'image' | 'video'; timestamp: Date; metadata: CaptureMetadata }) => void;
+  onCapture: (data: { blob: Blob; url: string; type: 'image'; timestamp: Date; metadata: CaptureMetadata }) => void;
   onCancel: () => void;
-  mode: 'photo' | 'video';
 }
 
 interface CaptureMetadata {
@@ -16,16 +15,12 @@ interface CaptureMetadata {
   cameraBrand?: string;
 }
 
-export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps) {
+export function CameraCapture({ onCapture, onCancel }: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordedChunksRef = useRef<Blob[]>([]);
 
   const [status, setStatus] = useState<'requesting' | 'active' | 'denied' | 'unsupported' | 'error'>('requesting');
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
 
@@ -35,20 +30,6 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
       stopCamera();
     };
   }, [facingMode]);
-
-  useEffect(() => {
-    let interval: number | null = null;
-    if (isRecording) {
-      interval = window.setInterval(() => {
-        setRecordingDuration(prev => prev + 1);
-      }, 1000);
-    } else {
-      setRecordingDuration(0);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isRecording]);
 
   useEffect(() => {
     if (status === 'active' && videoRef.current && mediaStreamRef.current) {
@@ -63,16 +44,14 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
 
   const startCamera = async () => {
     try {
-      // Check if getUserMedia is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setStatus('unsupported');
-        setErrorMessage('Camera access is not supported in this browser. Please use a modern browser like Chrome, Firefox, or Safari.');
+        setErrorMessage('Camera access is not supported in this browser. Please use Chrome, Firefox, or Safari.');
         return;
       }
 
       setStatus('requesting');
 
-      // Request camera access with fallback
       let stream: MediaStream;
       try {
         const constraints: MediaStreamConstraints = {
@@ -81,14 +60,13 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
             width: { ideal: 1280 },
             height: { ideal: 720 }
           },
-          audio: mode === 'video'
+          audio: false
         };
         stream = await navigator.mediaDevices.getUserMedia(constraints);
       } catch (e) {
-        // Fallback for laptops/webcams without facingMode
         stream = await navigator.mediaDevices.getUserMedia({
           video: true,
-          audio: mode === 'video'
+          audio: false
         });
       }
 
@@ -99,13 +77,13 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
 
       if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
         setStatus('denied');
-        setErrorMessage('Camera permission denied. Please allow camera access in your browser settings and reload the page.');
+        setErrorMessage('Camera permission denied. Please allow camera access in your browser settings.');
       } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
         setStatus('error');
-        setErrorMessage('No camera found on this device. Please connect a camera or use a device with a built-in camera.');
+        setErrorMessage('No camera found on this device.');
       } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
         setStatus('error');
-        setErrorMessage('Camera is already in use by another application. Please close other apps using the camera and try again.');
+        setErrorMessage('Camera is in use by another app. Please close other apps using the camera.');
       } else {
         setStatus('error');
         setErrorMessage(`Camera error: ${error.message || 'Unknown error occurred'}`);
@@ -118,29 +96,25 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
       mediaStreamRef.current.getTracks().forEach(track => track.stop());
       mediaStreamRef.current = null;
     }
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-    }
   };
 
   const capturePhoto = () => {
     if (!videoRef.current) return;
 
     const canvas = document.createElement('canvas');
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
+    canvas.width = videoRef.current.videoWidth || 1280;
+    canvas.height = videoRef.current.videoHeight || 720;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.drawImage(videoRef.current, 0, 0);
+    ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
 
     canvas.toBlob((blob) => {
       if (!blob) return;
 
       const url = URL.createObjectURL(blob);
       setCapturedPhoto(url);
-      // Photo will be sent with metadata on confirmation
     }, 'image/jpeg', 0.92);
   };
 
@@ -170,68 +144,8 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
     setCapturedPhoto(null);
   };
 
-  const startRecording = () => {
-    if (!mediaStreamRef.current) return;
-
-    try {
-      const options: MediaRecorderOptions = {
-        mimeType: MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : 'video/mp4'
-      };
-
-      const mediaRecorder = new MediaRecorder(mediaStreamRef.current, options);
-      mediaRecorderRef.current = mediaRecorder;
-      recordedChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          recordedChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(recordedChunksRef.current, {
-          type: options.mimeType
-        });
-
-        const url = URL.createObjectURL(blob);
-
-        const metadata: CaptureMetadata = {
-          captureMethod: 'camera_api',
-          captureTimestamp: new Date().toISOString(),
-          deviceInfo: navigator.userAgent,
-        };
-
-        onCapture({
-          blob,
-          url,
-          type: 'video',
-          timestamp: new Date(),
-          metadata
-        });
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-    } catch (error: any) {
-      setErrorMessage(`Recording error: ${error.message}`);
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-    }
-  };
-
   const switchCamera = () => {
     setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
-  };
-
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   // Permission denied or unsupported UI
@@ -291,7 +205,7 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
         <div className="relative w-full h-[400px] bg-black rounded-xl overflow-hidden border-2 border-accent-bright/50">
           <img
             src={capturedPhoto}
-            alt="Captured"
+            alt="Captured Hazard"
             className="w-full h-full object-contain"
           />
         </div>
@@ -325,14 +239,6 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
           className="w-full h-full object-cover"
         />
 
-        {/* Recording indicator */}
-        {isRecording && (
-          <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-500 text-white px-3 py-1.5 rounded-full font-mono text-sm">
-            <div className="h-3 w-3 bg-white rounded-full animate-pulse" />
-            REC {formatDuration(recordingDuration)}
-          </div>
-        )}
-
         {/* Camera controls overlay */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
           <div className="flex items-center justify-between">
@@ -340,29 +246,12 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
               <X className="h-5 w-5" />
             </Button>
 
-            <div className="flex items-center gap-3">
-              {mode === 'photo' ? (
-                <Button
-                  onClick={capturePhoto}
-                  className="h-16 w-16 rounded-full bg-white hover:bg-gray-200 flex items-center justify-center"
-                >
-                  <Camera className="h-8 w-8 text-black" />
-                </Button>
-              ) : (
-                <Button
-                  onClick={isRecording ? stopRecording : startRecording}
-                  className={`h-16 w-16 rounded-full flex items-center justify-center ${
-                    isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-white hover:bg-gray-200'
-                  }`}
-                >
-                  {isRecording ? (
-                    <div className="h-6 w-6 bg-white rounded-sm" />
-                  ) : (
-                    <Video className="h-8 w-8 text-black" />
-                  )}
-                </Button>
-              )}
-            </div>
+            <Button
+              onClick={capturePhoto}
+              className="h-16 w-16 rounded-full bg-white hover:bg-gray-200 flex items-center justify-center shadow-lg"
+            >
+              <Camera className="h-8 w-8 text-black" />
+            </Button>
 
             <Button variant="ghost" size="sm" onClick={switchCamera} className="text-white">
               <RotateCcw className="h-5 w-5" />
@@ -373,8 +262,9 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
 
       <div className="mt-2 flex items-center justify-center gap-2 text-xs text-emerald-400">
         <div className="h-2 w-2 bg-emerald-400 rounded-full animate-pulse" />
-        <span>Camera Active - Captured via Browser API</span>
+        <span>Camera Active — Photo Capture Mode</span>
       </div>
     </motion.div>
   );
 }
+
