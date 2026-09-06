@@ -9,6 +9,7 @@ import joblib
 import numpy as np
 import json
 import os
+import pandas as pd
 
 app = Flask(__name__)
 CORS(app)
@@ -215,8 +216,6 @@ def predict_batch():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    import pandas as pd
-
     print("="*60)
     print("Landslide Risk Prediction API")
     print("="*60)
@@ -224,6 +223,6 @@ if __name__ == '__main__':
     if load_model():
         print("\n[OK] Starting Flask server on http://localhost:5000")
         print("="*60)
-        app.run(host='0.0.0.0', port=5000, debug=False)
+        app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
     else:
         print("\n[ERROR] Failed to start: Model not loaded")
