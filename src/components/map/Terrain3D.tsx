@@ -59,7 +59,8 @@ function RiskMarker({ zone, index }: { zone: RiskZone; index: number }) {
   const color = RISK_COLORS[zone.riskLevel];
   const x = (index % 4 - 1.5) * 2.5;
   const z = (Math.floor(index / 4) - 1) * 2.5;
-  const height = zone.riskScore / 30;
+  const riskScore = Number.isFinite(Number(zone.riskScore)) ? Number(zone.riskScore) : 0;
+  const height = Math.max(0, Math.min(100, riskScore)) / 30;
 
   useFrame(({ clock }) => {
     if (ref.current) {
@@ -82,7 +83,7 @@ function RiskMarker({ zone, index }: { zone: RiskZone; index: number }) {
       )}
       <Html distanceFactor={10} position={[0, height + 0.8, 0]} center>
         <div className="whitespace-nowrap rounded bg-card/95 px-2 py-0.5 text-[10px] font-medium text-main border border-border">
-          {zone.name.split(' ').slice(0, 2).join(' ')} · {zone.riskScore}
+          {zone.name.split(' ').slice(0, 2).join(' ')} · {riskScore}
         </div>
       </Html>
     </group>
@@ -90,7 +91,8 @@ function RiskMarker({ zone, index }: { zone: RiskZone; index: number }) {
 }
 
 function Scene({ zones, autoRotate, showRain }: { zones: RiskZone[]; autoRotate: boolean; showRain: boolean }) {
-  const avgRain = zones.reduce((s, z) => s + z.rainfall, 0) / Math.max(zones.length, 1);
+  const validRainfall = zones.map(zone => Number(zone.rainfall)).filter(Number.isFinite);
+  const avgRain = validRainfall.reduce((sum, rainfall) => sum + rainfall, 0) / Math.max(validRainfall.length, 1);
 
   return (
     <>

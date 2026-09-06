@@ -81,9 +81,9 @@ export function AlertCards({ selectedZone }: { selectedZone?: RiskZone | null })
                 </Button>
               )}
             </div>
-            {alert.affectedRoads.length > 0 && (
+            {(alert.affectedRoads || []).length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
-                {alert.affectedRoads.map(road => (
+                {(alert.affectedRoads || []).map(road => (
                   <span key={road} className="rounded bg-card-hover px-1.5 py-0.5 text-[10px] text-dim">
                     {road}
                   </span>

@@ -115,7 +115,7 @@ export function GISMap({
           </CircleMarker>
         ))}
 
-        {roads.map(road => (
+        {(roads || []).map(road => (
           <Polyline
             key={road.id}
             positions={road.coordinates}
@@ -135,7 +135,7 @@ export function GISMap({
           </Polyline>
         ))}
 
-        {alerts.filter(a => !a.acknowledged).map(alert => (
+        {(alerts || []).filter(a => !a.acknowledged).map(alert => (
           <CircleMarker
             key={alert.id}
             center={[alert.location.lat, alert.location.lng]}

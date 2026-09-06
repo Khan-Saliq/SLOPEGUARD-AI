@@ -446,7 +446,8 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
       });
 
       if (!response.ok) {
-        console.warn('Failed to refresh risk zones:', response.statusText);
+        const errorBody = await response.json().catch(() => null);
+        console.warn('Failed to refresh risk zones:', response.status, errorBody?.error || response.statusText);
         setIsLoading(false);
         return;
       }
