@@ -36,6 +36,11 @@ def load_model():
         print(f"[ERROR] Failed to load model: {e}")
         return False
 
+
+
+# Gunicorn imports app:app and does not execute the __main__ block.
+load_model()
+
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
