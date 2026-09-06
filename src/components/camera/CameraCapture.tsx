@@ -50,6 +50,17 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
     };
   }, [isRecording]);
 
+  useEffect(() => {
+    if (status === 'active' && videoRef.current && mediaStreamRef.current) {
+      const video = videoRef.current;
+      video.srcObject = mediaStreamRef.current;
+      video.onloadedmetadata = () => {
+        video.play().catch(e => console.warn('Video auto-play deferred:', e));
+      };
+      video.play().catch(() => {});
+    }
+  }, [status]);
+
   const startCamera = async () => {
     try {
       // Check if getUserMedia is supported
@@ -61,25 +72,27 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
 
       setStatus('requesting');
 
-      // Request camera access
-      const constraints: MediaStreamConstraints = {
-        video: {
-          facingMode: facingMode,
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        },
-        audio: mode === 'video'
-      };
-
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-
-      mediaStreamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+      // Request camera access with fallback
+      let stream: MediaStream;
+      try {
+        const constraints: MediaStreamConstraints = {
+          video: {
+            facingMode: facingMode,
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: mode === 'video'
+        };
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (e) {
+        // Fallback for laptops/webcams without facingMode
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: mode === 'video'
+        });
       }
 
+      mediaStreamRef.current = stream;
       setStatus('active');
     } catch (error: any) {
       console.error('Camera access error:', error);
