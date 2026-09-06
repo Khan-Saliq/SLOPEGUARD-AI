@@ -44,7 +44,8 @@ async function calculateRouteORS(
   end: RoutePoint,
   apiKey?: string
 ): Promise<RouteResult> {
-  const ORS_API_KEY = apiKey || import.meta.env.VITE_ORS_API_KEY || '5b3ce3597851110001cf6248a0b6b647449e42e8a7f0b6e52d8e3df1';
+  const ORS_API_KEY = apiKey || import.meta.env.VITE_ORS_API_KEY;
+  if (!ORS_API_KEY) throw new Error('OpenRouteService is not configured');
 
   const url = 'https://api.openrouteservice.org/v2/directions/driving-car';
 
