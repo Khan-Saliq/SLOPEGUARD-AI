@@ -160,13 +160,18 @@ export function DashboardPage() {
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs font-semibold uppercase tracking-wider text-accent-bright">
-                    Focused Map Area Active:
+                    Focused Map Location Active:
                   </span>
-                  <span className="text-sm font-bold text-main">{selectedZone.name}</span>
+                  <span className="text-sm font-bold text-white">{selectedZone.name}</span>
                   <RiskBadge level={selectedZone.riskLevel} />
+                  {selectedZone.riskLevel === 'low' && (
+                    <span className="text-xs font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
+                      🟢 SAFE CONDITION — NO DISASTER RISK DETECTED
+                    </span>
+                  )}
                 </div>
-                <p className="text-xs text-dim mt-0.5 font-mono">
-                  {selectedZone.location.district}, {selectedZone.location.state} • Score: {selectedZone.riskScore} • Rain: {selectedZone.rainfall}mm • Soil Moisture: {selectedZone.soilMoisture}% • Slope: {selectedZone.slope}°
+                <p className="text-xs text-slate-300 mt-1 font-mono">
+                  {selectedZone.location.district}, {selectedZone.location.state} • Risk Score: {selectedZone.riskScore}/100 • Rain: {selectedZone.rainfall}mm • Moisture: {selectedZone.soilMoisture}% • Slope: {selectedZone.slope}°
                 </p>
               </div>
             </div>

@@ -1,10 +1,10 @@
-import { MapContainer, TileLayer, CircleMarker, Polyline, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Polyline, Popup, useMap, useMapEvents } from 'react-leaflet';
 import { useEffect } from 'react';
 import type { RiskZone, Road, Alert } from '../../types';
 import type { SatelliteLayerMode } from './SatelliteLayerControl';
-import { RISK_COLORS } from '../../lib/utils';
+import { RISK_COLORS, formatRelativeTime } from '../../lib/utils';
 import { RiskBadge, DataSourceBadge } from '../ui/Badge';
-import { formatRelativeTime } from '../../lib/utils';
+import { createDynamicRiskZone } from '../../lib/placeLookup';
 
 const NER_CENTER: [number, number] = [25.5, 92.0];
 
@@ -13,6 +13,32 @@ function MapController({ center, zoom }: { center: [number, number]; zoom: numbe
   useEffect(() => {
     map.flyTo(center, zoom, { duration: 1.5 });
   }, [center, zoom, map]);
+  return null;
+}
+
+function MapClickHandler({ onZoneClick, zones }: { onZoneClick?: (zone: RiskZone) => void; zones: RiskZone[] }) {
+  useMapEvents({
+    click(e) {
+      const lat = Number(e.latlng.lat.toFixed(4));
+      const lng = Number(e.latlng.lng.toFixed(4));
+
+      // Check if clicked close to an existing zone (< 15km)
+      const existing = (zones || []).find(z => {
+        const dLat = Math.abs(z.location.lat - lat);
+        const dLng = Math.abs(z.location.lng - lng);
+        return dLat < 0.25 && dLng < 0.25;
+      });
+
+      if (existing) {
+        onZoneClick?.(existing);
+        return;
+      }
+
+      // Otherwise create a dynamic zone for the clicked location (e.g. Pahalgam, Kashmir)
+      const dynamicZone = createDynamicRiskZone(lat, lng);
+      onZoneClick?.(dynamicZone);
+    },
+  });
   return null;
 }
 
@@ -82,6 +108,7 @@ export function GISMap({
           url={tileConfig.url}
         />
         <MapController center={center} zoom={zoom} />
+        <MapClickHandler onZoneClick={onZoneClick} zones={zones} />
 
         {showHeatmap && (zones || []).map(zone => (
           <CircleMarker
