@@ -14,14 +14,20 @@ export function RainfallChart({ selectedZone }: { selectedZone?: RiskZone | null
   const { weatherHistory } = useMonitorData();
 
   // If a specific zone is selected, scale rainfall/moisture to zone's live values
-  const safeWeatherHistory = weatherHistory || [];
+  const safeWeatherHistory = (weatherHistory || []).filter(item => (
+    Number.isFinite(Number(item.rainfall)) && Number.isFinite(Number(item.soilMoisture))
+  ));
+  const selectedRainfall = selectedZone ? Number(selectedZone.rainfall) : 0;
+  const selectedSoilMoisture = selectedZone ? Number(selectedZone.soilMoisture) : 0;
   const displayData = selectedZone
+    && Number.isFinite(selectedRainfall)
+    && Number.isFinite(selectedSoilMoisture)
     ? safeWeatherHistory.map((item, idx) => {
         const factor = 0.85 + (idx / Math.max(safeWeatherHistory.length, 1)) * 0.3;
         return {
           date: item.date,
-          rainfall: Math.round(selectedZone.rainfall * factor),
-          soilMoisture: Math.min(100, Math.round(selectedZone.soilMoisture * factor)),
+          rainfall: Math.round(selectedRainfall * factor),
+          soilMoisture: Math.min(100, Math.round(selectedSoilMoisture * factor)),
         };
       })
     : safeWeatherHistory;
@@ -70,11 +76,18 @@ export function RiskTrendChart({ selectedZone }: { selectedZone?: RiskZone | nul
   const { riskTrend } = useMonitorData();
 
   // If a zone is selected, calculate 24h risk score trend for that single zone
-  const safeRiskTrend = riskTrend || [];
+  const safeRiskTrend = (riskTrend || []).filter(point => (
+    Number.isFinite(Number(point.critical))
+    && Number.isFinite(Number(point.high))
+    && Number.isFinite(Number(point.moderate))
+    && Number.isFinite(Number(point.low))
+  ));
+  const selectedRiskScore = selectedZone ? Number(selectedZone.riskScore) : 0;
   const zoneTrendData = selectedZone
+    && Number.isFinite(selectedRiskScore)
     ? safeRiskTrend.map((pt, idx) => {
         const delta = Math.sin(idx / 2) * 8;
-        const score = Math.min(100, Math.max(10, Math.round(selectedZone.riskScore + delta)));
+        const score = Math.min(100, Math.max(10, Math.round(selectedRiskScore + delta)));
         return {
           hour: pt.hour,
           zoneScore: score,

@@ -10,8 +10,8 @@ import { Camera, MapPin, Shield, AlertTriangle, ChevronRight, WifiOff } from 'lu
 export function CitizenHomePage() {
   const { user, isOffline } = useApp();
   const { riskZones, citizenReports, pendingSyncCount, syncPendingReports } = useMonitorData();
-  const nearbyRisk = riskZones.filter(z => z.riskLevel === 'critical' || z.riskLevel === 'high').slice(0, 3);
-  const myReports = citizenReports.filter(r => r.userId === user?.id);
+  const nearbyRisk = (riskZones || []).filter(z => z.riskLevel === 'critical' || z.riskLevel === 'high').slice(0, 3);
+  const myReports = (citizenReports || []).filter(r => r.userId === user?.id);
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">

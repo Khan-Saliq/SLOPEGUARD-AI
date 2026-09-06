@@ -15,9 +15,10 @@ const levels: { key: RiskLevel; icon: typeof ShieldAlert; label: string }[] = [
 export function RiskCounters() {
   const { riskZones, tickCount } = useMonitorData();
 
+  const safeRiskZones = riskZones || [];
   const counts = levels.map(l => ({
     ...l,
-    count: riskZones.filter(z => z.riskLevel === l.key).length,
+    count: safeRiskZones.filter(z => z.riskLevel === l.key).length,
   }));
 
   return (
@@ -49,7 +50,7 @@ export function RiskCounters() {
             <div className="flex flex-col items-center gap-1">
               <RiskGauge3D
                 value={count}
-                max={Math.max(riskZones.length, 1)}
+                max={Math.max(safeRiskZones.length, 1)}
                 color={RISK_COLORS[key]}
                 label=""
                 className="h-16 w-16"
