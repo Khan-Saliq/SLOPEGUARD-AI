@@ -83,7 +83,7 @@ export function GISMap({
         />
         <MapController center={center} zoom={zoom} />
 
-        {showHeatmap && zones.map(zone => (
+        {showHeatmap && (zones || []).map(zone => (
           <CircleMarker
             key={zone.id}
             center={[zone.location.lat, zone.location.lng]}

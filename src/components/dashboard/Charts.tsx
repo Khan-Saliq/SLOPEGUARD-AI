@@ -14,16 +14,17 @@ export function RainfallChart({ selectedZone }: { selectedZone?: RiskZone | null
   const { weatherHistory } = useMonitorData();
 
   // If a specific zone is selected, scale rainfall/moisture to zone's live values
+  const safeWeatherHistory = weatherHistory || [];
   const displayData = selectedZone
-    ? weatherHistory.map((item, idx) => {
-        const factor = 0.85 + (idx / weatherHistory.length) * 0.3;
+    ? safeWeatherHistory.map((item, idx) => {
+        const factor = 0.85 + (idx / Math.max(safeWeatherHistory.length, 1)) * 0.3;
         return {
           date: item.date,
           rainfall: Math.round(selectedZone.rainfall * factor),
           soilMoisture: Math.min(100, Math.round(selectedZone.soilMoisture * factor)),
         };
       })
-    : weatherHistory;
+    : safeWeatherHistory;
 
   return (
     <Card>
@@ -69,8 +70,9 @@ export function RiskTrendChart({ selectedZone }: { selectedZone?: RiskZone | nul
   const { riskTrend } = useMonitorData();
 
   // If a zone is selected, calculate 24h risk score trend for that single zone
+  const safeRiskTrend = riskTrend || [];
   const zoneTrendData = selectedZone
-    ? riskTrend.map((pt, idx) => {
+    ? safeRiskTrend.map((pt, idx) => {
         const delta = Math.sin(idx / 2) * 8;
         const score = Math.min(100, Math.max(10, Math.round(selectedZone.riskScore + delta)));
         return {
@@ -105,7 +107,7 @@ export function RiskTrendChart({ selectedZone }: { selectedZone?: RiskZone | nul
               <Line type="monotone" dataKey="zoneScore" stroke={selectedZone ? RISK_COLORS[selectedZone.riskLevel] : '#ef4444'} strokeWidth={2.5} dot={false} isAnimationActive name={`${selectedZone?.name ?? 'Focused Zone'} Risk Score`} />
             </LineChart>
           ) : (
-            <LineChart data={riskTrend}>
+            <LineChart data={safeRiskTrend}>
               <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
               <XAxis dataKey="hour" tick={{ fill: CHART_TEXT, fontSize: 10 }} interval={3} />
               <YAxis tick={{ fill: CHART_TEXT, fontSize: 10 }} />
@@ -124,9 +126,10 @@ export function RiskTrendChart({ selectedZone }: { selectedZone?: RiskZone | nul
 }
 
 export function DistrictSummaryChart({ data }: { data: { name: string; critical: number; high: number; moderate: number; low: number }[] }) {
+  const safeData = data || [];
   return (
     <ResponsiveContainer width="100%" height={250}>
-      <AreaChart data={data}>
+      <AreaChart data={safeData}>
         <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
         <XAxis dataKey="name" tick={{ fill: CHART_TEXT, fontSize: 9 }} angle={-30} textAnchor="end" height={60} />
         <YAxis tick={{ fill: CHART_TEXT, fontSize: 10 }} />

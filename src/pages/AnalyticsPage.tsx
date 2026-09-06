@@ -42,7 +42,7 @@ export function AnalyticsPage() {
         { factor: 'Citizen Reports (W₆)', value: 62 },
       ];
 
-  const riskScoreData = riskZones.map(z => ({
+  const riskScoreData = (riskZones || []).map(z => ({
     id: z.id,
     name: z.name.split(' ').slice(0, 2).join(' '),
     fullName: z.name,
