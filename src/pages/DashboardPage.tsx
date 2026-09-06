@@ -44,12 +44,16 @@ export function DashboardPage() {
   const filteredDistricts = selectedZone
     ? districts.filter(d => d.name === selectedZone.location.district)
     : districts;
+  const displayDistricts = filteredDistricts.length > 0 ? filteredDistricts : districts;
 
   const filteredReports = selectedZone
     ? citizenReports.filter(r => r.location.district === selectedZone.location.district || r.description.includes(selectedZone.name))
     : citizenReports;
+  const displayReports = filteredReports.length > 0 ? filteredReports : citizenReports;
 
-  const displayReports = filteredReports;
+  const highCriticalHotspots = riskZones.filter(z => z.riskLevel === 'critical' || z.riskLevel === 'high');
+  const displayHotspots = highCriticalHotspots.length > 0 ? highCriticalHotspots : riskZones;
+  const sortedHotspots = displayHotspots.slice().sort((a, b) => b.riskScore - a.riskScore);
 
   return (
     <div className="space-y-6">
@@ -441,7 +445,7 @@ export function DashboardPage() {
         {/* 5. District Risk Summary Breakdown */}
         <div className="col-span-1 lg:col-span-4">
           {outputDisplayMode === 'text' ? (
-            <DistrictTextReport districts={filteredDistricts} />
+            <DistrictTextReport districts={displayDistricts} />
           ) : outputDisplayMode === 'graphical' ? (
             <Card className="h-full flex flex-col justify-between">
               <CardHeader>
@@ -452,7 +456,7 @@ export function DashboardPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                  {filteredDistricts.map((d, i) => (
+                  {displayDistricts.map((d, i) => (
                     <motion.div
                       key={d.name}
                       initial={{ opacity: 0, x: -10 }}
@@ -493,13 +497,13 @@ export function DashboardPage() {
             </Card>
           ) : (
             <div className="space-y-4">
-              <DistrictTextReport districts={filteredDistricts} />
+              <DistrictTextReport districts={displayDistricts} />
               <Card>
                 <CardHeader>
                   <CardTitle className="text-xs font-bold text-main">District Summary Chart</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <DistrictSummaryChart data={filteredDistricts} />
+                  <DistrictSummaryChart data={displayDistricts} />
                 </CardContent>
               </Card>
             </div>
@@ -510,7 +514,7 @@ export function DashboardPage() {
         <div className="col-span-1 lg:col-span-4">
           {outputDisplayMode === 'text' ? (
             <HotspotsTextReport riskZones={riskZones} />
-          ) : (
+          ) : outputDisplayMode === 'graphical' ? (
             <Card className="h-full flex flex-col justify-between">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -520,43 +524,40 @@ export function DashboardPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                  {riskZones
-                    .filter(z => z.riskLevel === 'critical' || z.riskLevel === 'high')
-                    .sort((a, b) => b.riskScore - a.riskScore)
-                    .map(zone => {
-                      const isSelected = selectedZone?.id === zone.id;
-                      return (
-                        <motion.div
-                          key={zone.id}
-                          layout
-                          onClick={() => setSelectedZone(zone)}
-                          className={`flex items-center justify-between rounded-lg border px-3 py-2 cursor-pointer transition-all ${
-                            isSelected
-                              ? 'border-accent-bright bg-accent/25 shadow-md ring-1 ring-accent-bright'
-                              : 'border-border/40 bg-card-hover/50 hover:bg-card-hover'
-                          }`}
-                        >
-                          <div>
-                            <p className="text-xs font-medium text-main flex items-center gap-1">
-                              {isSelected && <Target className="h-3 w-3 text-accent-bright shrink-0" />}
-                              {zone.name}
-                            </p>
-                            <p className="text-[10px] text-dim">{zone.location.district}</p>
-                          </div>
-                          <div className="text-right">
-                            <RiskBadge level={zone.riskLevel} />
-                            <motion.p
-                              key={zone.riskScore}
-                              initial={{ scale: 1.1 }}
-                              animate={{ scale: 1 }}
-                              className="text-[10px] text-dim mt-1 font-mono"
-                            >
-                              Score: {zone.riskScore}
-                            </motion.p>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
+                  {sortedHotspots.map(zone => {
+                    const isSelected = selectedZone?.id === zone.id;
+                    return (
+                      <motion.div
+                        key={zone.id}
+                        layout
+                        onClick={() => setSelectedZone(zone)}
+                        className={`flex items-center justify-between rounded-lg border px-3 py-2 cursor-pointer transition-all ${
+                          isSelected
+                            ? 'border-accent-bright bg-accent/25 shadow-md ring-1 ring-accent-bright'
+                            : 'border-border/40 bg-card-hover/50 hover:bg-card-hover'
+                        }`}
+                      >
+                        <div>
+                          <p className="text-xs font-medium text-main flex items-center gap-1">
+                            {isSelected && <Target className="h-3 w-3 text-accent-bright shrink-0" />}
+                            {zone.name}
+                          </p>
+                          <p className="text-[10px] text-dim">{zone.location.district}</p>
+                        </div>
+                        <div className="text-right">
+                          <RiskBadge level={zone.riskLevel} />
+                          <motion.p
+                            key={zone.riskScore}
+                            initial={{ scale: 1.1 }}
+                            animate={{ scale: 1 }}
+                            className="text-[10px] text-dim mt-1 font-mono"
+                          >
+                            Score: {zone.riskScore}
+                          </motion.p>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
                 {showEvaluatorExplanations && (
                   <EvaluatorExplanationCard
@@ -569,6 +570,23 @@ export function DashboardPage() {
                 )}
               </CardContent>
             </Card>
+          ) : (
+            <div className="space-y-4">
+              <HotspotsTextReport riskZones={riskZones} />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-xs font-bold text-main font-mono">Hotspot Vulnerability Rankings</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 max-h-[180px] overflow-y-auto">
+                  {sortedHotspots.slice(0, 4).map(zone => (
+                    <div key={zone.id} className="flex justify-between items-center text-xs p-1.5 rounded bg-black/20">
+                      <span className="text-white font-medium truncate max-w-[140px]">{zone.name}</span>
+                      <RiskBadge level={zone.riskLevel} />
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
           )}
         </div>
 

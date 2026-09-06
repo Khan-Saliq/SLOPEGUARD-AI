@@ -7,12 +7,22 @@ interface TextReportProps {
   selectedZone?: RiskZone | null;
 }
 
+const DEFAULT_NORMAL_DISTRICTS: DistrictSummary[] = [
+  { name: 'East Khasi Hills', state: 'Meghalaya', totalZones: 3, critical: 1, high: 1, moderate: 1, low: 0, activeAlerts: 1, blockedRoads: 1, isolatedVillages: 2, center: [25.27, 91.73] },
+  { name: 'Kamrup Metro', state: 'Assam', totalZones: 2, critical: 0, high: 1, moderate: 1, low: 0, activeAlerts: 0, blockedRoads: 0, isolatedVillages: 1, center: [26.14, 91.73] },
+  { name: 'Gangtok', state: 'Sikkim', totalZones: 2, critical: 1, high: 0, moderate: 1, low: 0, activeAlerts: 1, blockedRoads: 1, isolatedVillages: 1, center: [27.33, 88.61] },
+  { name: 'Shimla', state: 'Himachal Pradesh', totalZones: 2, critical: 1, high: 1, moderate: 0, low: 0, activeAlerts: 1, blockedRoads: 1, isolatedVillages: 2, center: [31.10, 77.17] },
+  { name: 'Wayanad', state: 'Kerala', totalZones: 2, critical: 1, high: 1, moderate: 0, low: 0, activeAlerts: 1, blockedRoads: 1, isolatedVillages: 3, center: [11.68, 76.13] },
+];
+
 // 1. Live Automated Early Warning Feed — Text Component Report
 export function AlertsTextReport({ selectedZone, alerts }: TextReportProps & { alerts: Alert[] }) {
   const activeAlerts = (alerts || []).filter(a => !a.acknowledged);
   const displayAlerts = selectedZone
     ? activeAlerts.filter(a => a.district === selectedZone.location.district || a.title.includes(selectedZone.name))
     : activeAlerts;
+
+  const alertsToRender = displayAlerts.length > 0 ? displayAlerts : activeAlerts;
 
   return (
     <Card className="border-border/60 bg-card/90">
@@ -23,12 +33,12 @@ export function AlertsTextReport({ selectedZone, alerts }: TextReportProps & { a
             Early Warning Feed — Text Status Report
           </span>
           <span className="text-[10px] font-mono bg-accent/10 text-accent-bright px-2 py-0.5 rounded border border-accent/20">
-            Text Output Mode (Default)
+            Live Warning Log
           </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-3 space-y-3">
-        {displayAlerts.length === 0 ? (
+        {alertsToRender.length === 0 ? (
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/10 p-3 space-y-1.5">
             <div className="flex items-center gap-2 text-emerald-400 font-semibold text-xs">
               <CheckCircle2 className="h-4 w-4" />
@@ -46,7 +56,7 @@ export function AlertsTextReport({ selectedZone, alerts }: TextReportProps & { a
           </div>
         ) : (
           <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-            {displayAlerts.map(alert => (
+            {alertsToRender.map(alert => (
               <div key={alert.id} className="rounded-lg border border-critical/30 bg-critical/5 p-2.5 text-xs space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-white">{alert.title}</span>
@@ -69,7 +79,7 @@ export function AlertsTextReport({ selectedZone, alerts }: TextReportProps & { a
 // 2. 3D Terrain & Rain Simulation — Text Component Report
 export function TerrainTextReport({ selectedZone }: TextReportProps) {
   const slope = selectedZone ? selectedZone.slope : 38;
-  const rain = selectedZone ? selectedZone.rainfall : 25;
+  const rain = selectedZone ? selectedZone.rainfall : 45;
   const isNormal = !selectedZone || selectedZone.riskLevel === 'low' || selectedZone.riskLevel === 'moderate';
 
   return (
@@ -126,8 +136,8 @@ export function TerrainTextReport({ selectedZone }: TextReportProps) {
 
 // 3. Rainfall & Soil Moisture — Text Component Report
 export function RainfallTextReport({ selectedZone }: TextReportProps) {
-  const rain = selectedZone ? selectedZone.rainfall : 22;
-  const moisture = selectedZone ? selectedZone.soilMoisture : 38;
+  const rain = selectedZone ? selectedZone.rainfall : 48;
+  const moisture = selectedZone ? selectedZone.soilMoisture : 52;
 
   return (
     <Card className="border-border/60 bg-card/90">
@@ -166,8 +176,8 @@ export function RainfallTextReport({ selectedZone }: TextReportProps) {
 
 // 4. Live Risk Trend — Text Component Report
 export function RiskTrendTextReport({ selectedZone }: TextReportProps) {
-  const score = selectedZone ? selectedZone.riskScore : 28;
-  const level = selectedZone ? selectedZone.riskLevel : 'low';
+  const score = selectedZone ? selectedZone.riskScore : 42;
+  const level = selectedZone ? selectedZone.riskLevel : 'moderate';
 
   return (
     <Card className="border-border/60 bg-card/90">
@@ -204,7 +214,7 @@ export function RiskTrendTextReport({ selectedZone }: TextReportProps) {
 
 // 5. District Risk Summary — Text Component Report
 export function DistrictTextReport({ districts }: { districts: DistrictSummary[] }) {
-  const safeDistricts = districts || [];
+  const safeDistricts = (districts && districts.length > 0) ? districts : DEFAULT_NORMAL_DISTRICTS;
 
   return (
     <Card className="h-full flex flex-col justify-between border-border/60 bg-card/90">
@@ -241,7 +251,11 @@ export function DistrictTextReport({ districts }: { districts: DistrictSummary[]
 
 // 6. AI-Prioritized High-Risk Hotspots — Text Component Report
 export function HotspotsTextReport({ riskZones }: { riskZones: RiskZone[] }) {
-  const safeZones = riskZones || [];
+  const allZones = riskZones || [];
+  const highCritical = allZones.filter(z => z.riskLevel === 'critical' || z.riskLevel === 'high');
+  const safeZones = highCritical.length > 0 ? highCritical : allZones;
+
+  const sortedZones = safeZones.slice().sort((a, b) => b.riskScore - a.riskScore);
 
   return (
     <Card className="h-full flex flex-col justify-between border-border/60 bg-card/90">
@@ -258,7 +272,7 @@ export function HotspotsTextReport({ riskZones }: { riskZones: RiskZone[] }) {
       </CardHeader>
       <CardContent className="pt-3 space-y-2 text-xs">
         <div className="max-h-[220px] overflow-y-auto space-y-1.5 pr-1">
-          {safeZones.map((z, i) => (
+          {sortedZones.map((z, i) => (
             <div key={z.id} className="flex items-center justify-between rounded bg-slate-900/60 p-2 border border-slate-800">
               <div>
                 <p className="font-bold text-white">{i + 1}. {z.name}</p>
@@ -278,11 +292,11 @@ export function HotspotsTextReport({ riskZones }: { riskZones: RiskZone[] }) {
 
 // 7. Multi-Criteria Risk Factor Radar — Text Component Report
 export function RadarTextReport({ selectedZone }: TextReportProps) {
-  const rainW = selectedZone ? Math.round(selectedZone.rainfall * 0.3) : 23;
-  const moistW = selectedZone ? Math.round(selectedZone.soilMoisture * 0.2) : 15;
-  const slopeW = selectedZone ? Math.round(selectedZone.slope * 0.36) : 14;
-  const histW = selectedZone ? Math.round(selectedZone.historicalRisk * 0.15) : 12;
-  const satW = selectedZone ? Math.round(selectedZone.satelliteIndicator * 0.15) : 10;
+  const rainW = selectedZone ? Math.round(selectedZone.rainfall * 0.3) : 25;
+  const moistW = selectedZone ? Math.round(selectedZone.soilMoisture * 0.2) : 18;
+  const slopeW = selectedZone ? Math.round(selectedZone.slope * 0.36) : 16;
+  const histW = selectedZone ? Math.round(selectedZone.historicalRisk * 0.15) : 14;
+  const satW = selectedZone ? Math.round(selectedZone.satelliteIndicator * 0.15) : 12;
 
   return (
     <Card className="h-full flex flex-col justify-between border-border/60 bg-card/90">

@@ -409,15 +409,37 @@ function maybeEscalateAlert(prev: Alert[], zones: RiskZone[]): Alert[] {
   return [alert, ...prev].slice(0, 12);
 }
 
+export const INITIAL_RISK_TREND: RiskTrendPoint[] = Array.from({ length: 12 }, (_, i) => {
+  const h = (new Date().getHours() - (11 - i) * 2 + 24) % 24;
+  return {
+    hour: `${String(h).padStart(2, '0')}:00`,
+    critical: i > 8 ? 4 : i > 4 ? 3 : 2,
+    high: i > 8 ? 4 : i > 4 ? 3 : 2,
+    moderate: 2,
+    low: 2,
+  };
+});
+
+export const INITIAL_WEATHER_HISTORY: WeatherData[] = Array.from({ length: 12 }, (_, i) => {
+  const h = (new Date().getHours() - (11 - i) * 2 + 24) % 24;
+  return {
+    date: `2026-09-07T${String(h).padStart(2, '0')}:00:00.000Z`,
+    rainfall: 65 + Math.round(Math.sin(i / 2) * 35),
+    soilMoisture: 60 + Math.round(Math.cos(i / 2) * 22),
+    temperature: 24,
+    humidity: 78,
+  };
+});
+
 export function MonitorDataProvider({ children }: { children: ReactNode }) {
-  const [riskZones, setRiskZones] = useState<RiskZone[]>([]);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [riskZones, setRiskZones] = useState<RiskZone[]>(INITIAL_INDIA_RISK_ZONES);
+  const [alerts, setAlerts] = useState<Alert[]>(INITIAL_INDIA_ALERTS);
   const [roads] = useState<Road[]>([]);
   const [villages] = useState<Village[]>([]);
-  const [citizenReports, setCitizenReports] = useState<CitizenReport[]>([]);
+  const [citizenReports, setCitizenReports] = useState<CitizenReport[]>(INITIAL_CITIZEN_REPORTS);
   const [emergencyTasks, setEmergencyTasks] = useState<EmergencyTask[]>([]);
-  const [weatherHistory, setWeatherHistory] = useState<WeatherData[]>([]);
-  const [riskTrend, setRiskTrend] = useState<RiskTrendPoint[]>([]);
+  const [weatherHistory, setWeatherHistory] = useState<WeatherData[]>(INITIAL_WEATHER_HISTORY);
+  const [riskTrend, setRiskTrend] = useState<RiskTrendPoint[]>(INITIAL_RISK_TREND);
   const [notifications] = useState<Notification[]>([]);
   const [lastUpdated, setLastUpdated] = useState(() => new Date());
   const [tickCount, setTickCount] = useState(0);
