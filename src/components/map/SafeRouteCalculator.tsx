@@ -256,7 +256,7 @@ export function SafeRouteCalculator({ roads, villages, onSelectRoute }: SafeRout
 
                     {/* Route line */}
                     <Polyline
-                      positions={activeRoute.route.geometry.map(coord => [coord[1], coord[0]])}
+                      positions={(activeRoute.route.geometry || []).map(coord => [coord[1], coord[0]])}
                       color="#0ea5e9"
                       weight={4}
                       opacity={0.8}
@@ -287,7 +287,7 @@ export function SafeRouteCalculator({ roads, villages, onSelectRoute }: SafeRout
                       </Marker>
                     ))}
 
-                    <MapBoundsHandler geometry={activeRoute.route.geometry} />
+                    <MapBoundsHandler geometry={activeRoute.route.geometry || []} />
                   </MapContainer>
                 </div>
 

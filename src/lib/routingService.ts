@@ -47,7 +47,7 @@ async function calculateRouteORS(
   const ORS_API_KEY = apiKey || import.meta.env.VITE_ORS_API_KEY;
   if (!ORS_API_KEY) throw new Error('OpenRouteService is not configured');
 
-  const url = 'https://api.openrouteservice.org/v2/directions/driving-car';
+  const url = 'https://api.openrouteservice.org/v2/directions/driving-car?geometry_format=geojson';
 
   const response = await fetch(url, {
     method: 'POST',
@@ -72,11 +72,15 @@ async function calculateRouteORS(
   const data = await response.json();
   const route = data.routes[0];
   const segment = route.segments[0];
+  const geometry = route.geometry?.coordinates;
+  if (!Array.isArray(geometry) || geometry.length < 2) {
+    throw new Error('Routing service returned no usable route geometry');
+  }
 
   return {
     distance: route.summary.distance, // in km
     duration: route.summary.duration / 3600, // convert seconds to hours
-    geometry: route.geometry.coordinates, // [lng, lat] pairs
+    geometry, // [lng, lat] pairs
     instructions: segment.steps?.map((step: any) => ({
       text: step.instruction,
       distance: step.distance,
