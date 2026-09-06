@@ -99,7 +99,7 @@ function Scene({ zones, autoRotate, showRain }: { zones: RiskZone[]; autoRotate:
       <color attach="background" args={['#12100e']} />
       <fog attach="fog" args={['#12100e', 8, 22]} />
       <ambientLight intensity={0.35} />
-      <directionalLight position={[5, 8, 5]} intensity={0.7} color="#f5f0e8" castShadow />
+      <directionalLight position={[5, 8, 5]} intensity={0.7} color="#f5f0e8" />
       <pointLight position={[-3, 5, -3]} intensity={0.5} color="#c4845c" />
       <pointLight position={[4, 3, 2]} intensity={0.3} color="#5a9a84" />
       <TerrainMesh />
@@ -135,7 +135,7 @@ export function Terrain3D({ zones, className, showRain = false }: Terrain3DProps
 
   return (
     <div className={className}>
-      <Canvas camera={{ position: [8, 6, 8], fov: 50 }} shadows>
+      <Canvas camera={{ position: [8, 6, 8], fov: 50 }}>
         <Suspense fallback={null}>
           <Scene zones={zones} autoRotate={!reducedMotion} showRain={showRain} />
         </Suspense>

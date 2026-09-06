@@ -562,14 +562,14 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
       });
     } else {
       // Real mode: refresh from API periodically (every 5 minutes)
-      if (token && tickCount % 50 === 0) { // Every ~5 minutes at 6s interval
+      if (token && ['authority', 'super_admin'].includes(user?.role || '') && tickCount % 50 === 0) { // Every ~5 minutes at 6s interval
         refreshRiskZones();
       }
     }
 
     setLastUpdated(new Date());
     setTickCount(c => c + 1);
-  }, [token, tickCount, refreshRiskZones]);
+  }, [token, user, tickCount, refreshRiskZones]);
 
   useEffect(() => {
     const id = setInterval(liveTick, 6000);

@@ -157,7 +157,7 @@ export interface DistrictSummary {
 export interface User {
   id: string;
   name: string;
-  role: 'authority' | 'field_official' | 'citizen';
+  role: 'authority' | 'super_admin' | 'field_official' | 'citizen';
   trustScore: number;
   district?: string;
   language: string;
