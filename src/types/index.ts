@@ -55,6 +55,14 @@ export interface RiskZone {
   population: number;
   infrastructureCount: number;
   lastUpdated: string;
+  confidence?: number;
+  dataSource?: string;
+  modelVersion?: string;
+  elevation?: number;
+  rainfall_24h?: number;
+  rainfall_72h?: number;
+  rainfall_intensity?: number;
+  data_sources?: Record<string, string>;
 }
 
 export interface Alert {

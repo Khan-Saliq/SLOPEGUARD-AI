@@ -6,7 +6,6 @@ export default function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'citizen' | 'authority'>('citizen');
   const [error, setError] = useState<string | null>(null);
   const { login } = useApp();
   const nav = useNavigate();
@@ -18,7 +17,7 @@ export default function SignupPage() {
       const res = await fetch('/api/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, role }),
+                body: JSON.stringify({ name, email, password }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Signup failed');
@@ -80,29 +79,7 @@ export default function SignupPage() {
             />
           </div>
 
-          <div>
-            <label className="text-xs text-slate-400 mb-1.5 block font-medium">Account Role</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setRole('citizen')}
-                className={`py-2.5 px-3 rounded-lg text-xs font-semibold border transition-all ${
-                  role === 'citizen' ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300' : 'bg-slate-800/40 border-slate-700 text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Citizen Portal
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole('authority')}
-                className={`py-2.5 px-3 rounded-lg text-xs font-semibold border transition-all ${
-                  role === 'authority' ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300' : 'bg-slate-800/40 border-slate-700 text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Authority Command
-              </button>
-            </div>
-          </div>
+          <p className="text-xs text-slate-400">Public registration creates a citizen account. Government access is granted through an approved invitation.</p>
 
           <button
             type="submit"

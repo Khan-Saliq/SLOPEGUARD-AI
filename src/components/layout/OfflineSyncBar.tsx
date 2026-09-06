@@ -42,7 +42,7 @@ export function OfflineSyncBar() {
 
           <span className="text-[11px] text-dim">
             {!isOnline
-              ? 'Reports saved locally on device (IndexedDB) & queued for cloud sync.'
+              ? 'Reports saved in local browser storage & queued for cloud sync.'
               : 'Real-time telemetry stream synchronized.'}
           </span>
         </div>

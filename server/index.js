@@ -8,7 +8,9 @@ const { nanoid } = require('nanoid');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
-const { connectMongo, getDb, seedAdminIfEmpty } = require('./mongo');
+const { connectMongo, getDb } = require('./mongo');
+const { fetchEnvironmentalData, fetchEnvironmentalDataBatch } = require('./dataFetcher');
+const { checkMLHealth, predictRisk, predictBatch } = require('./mlClient');
 
 const app = express();
 app.use(cors());
@@ -24,13 +26,33 @@ const logFile = path.join(__dirname, 'server_runtime.log');
 function appendLog(...parts) { try { fs.appendFileSync(logFile, `[${new Date().toISOString()}] ${parts.map(p=>typeof p==='string'?p:JSON.stringify(p)).join(' ')}\n`); } catch (e) { console.error('log write failed', e); } }
 appendLog('process-start', { pid: process.pid, argv: process.argv });
 
-const SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+const SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? null : require('crypto').randomBytes(32).toString('hex'));
+if (!SECRET) throw new Error('JWT_SECRET is required in production');
+
+async function seedDefaultRiskZones() {
+  const zones = getDb().collection('riskZones');
+  const count = await zones.countDocuments();
+  if (count === 0) {
+    const defaultZones = [
+      { id: nanoid(), name: 'Cherrapunji Sohra Slope Cut', location: { lat: 25.27, lng: 91.73, district: 'East Khasi Hills', state: 'Meghalaya' }, historicalRisk: 95, satelliteIndicator: 85, population: 5600, infrastructureCount: 14 },
+      { id: nanoid(), name: 'Upper Shillong Highway Pass', location: { lat: 25.54, lng: 91.87, district: 'East Khasi Hills', state: 'Meghalaya' }, historicalRisk: 88, satelliteIndicator: 78, population: 8900, infrastructureCount: 22 },
+      { id: nanoid(), name: 'Kamrup Bypass Hill Corridor', location: { lat: 26.14, lng: 91.73, district: 'Kamrup Metropolitan', state: 'Assam' }, historicalRisk: 75, satelliteIndicator: 70, population: 14200, infrastructureCount: 35 },
+      { id: nanoid(), name: 'Upper Gangtok Highway Cut', location: { lat: 27.33, lng: 88.61, district: 'Gangtok', state: 'Sikkim' }, historicalRisk: 92, satelliteIndicator: 80, population: 4300, infrastructureCount: 18 },
+      { id: nanoid(), name: 'Champhai Mountain Border Cut', location: { lat: 23.47, lng: 93.32, district: 'Champhai', state: 'Mizoram' }, historicalRisk: 70, satelliteIndicator: 65, population: 2800, infrastructureCount: 8 },
+      { id: nanoid(), name: 'Kohima Bypass Cliff Corridor', location: { lat: 25.67, lng: 94.10, district: 'Kohima', state: 'Nagaland' }, historicalRisk: 80, satelliteIndicator: 68, population: 3600, infrastructureCount: 12 },
+      { id: nanoid(), name: 'Itanagar Papum Pare Slope', location: { lat: 27.10, lng: 93.62, district: 'Papum Pare', state: 'Arunachal Pradesh' }, historicalRisk: 55, satelliteIndicator: 50, population: 5200, infrastructureCount: 15 },
+      { id: nanoid(), name: 'Imphal West Hill Edge', location: { lat: 24.81, lng: 93.93, district: 'Imphal West', state: 'Manipur' }, historicalRisk: 85, satelliteIndicator: 75, population: 6700, infrastructureCount: 19 }
+    ];
+    await zones.insertMany(defaultZones);
+    console.log(`Seeded ${defaultZones.length} default risk zones`);
+  }
+}
 
 async function init() {
-  const MONGO_URL = process.env.MONGO_URL || process.env.MONGODB_URI || 'mongodb+srv://khansaliq59_db_user:khansaliq59@cluster0.e5qpz18.mongodb.net/?retryWrites=true&w=majority';
+  const MONGO_URL = process.env.MONGO_URL || process.env.MONGODB_URI;
   try {
     await connectMongo(MONGO_URL);
-    await seedAdminIfEmpty();
+    await seedDefaultRiskZones();
   } catch (e) {
     console.warn('Backend initialized with fallback:', e.message);
   }
@@ -65,7 +87,7 @@ async function getAlertsData() {
 }
 
 async function getReportsData(user) {
-  const role = user.role === 'admin' ? 'authority' : user.role;
+  const role = ['admin', 'super_admin'].includes(user.role) ? 'authority' : user.role;
   const q = role === 'authority' ? {} : { userId: user.id };
   return (await getDb().collection('reports').find(q).toArray()) || [];
 }
@@ -89,7 +111,16 @@ async function authMiddleware(req, res, next) {
   const token = parts[1];
   try {
     const decoded = jwt.verify(token, SECRET);
-    req.user = decoded;
+    const currentUser = await findUserById(decoded.id);
+    if (!currentUser) return res.status(401).json({ error: 'Unauthorized' });
+    if (currentUser.accountStatus && currentUser.accountStatus !== 'active') return res.status(403).json({ error: 'Account is not active' });
+    req.user = {
+      ...decoded,
+      id: currentUser.id || currentUser._id,
+      role: currentUser.role,
+      name: currentUser.name,
+      email: currentUser.email,
+    };
     next();
   } catch (e) {
     res.status(401).json({ error: 'Invalid token' });
@@ -143,19 +174,48 @@ function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
     const r = req.user.role || req.user.role?.toString();
-    if (roles.includes(r) || roles.includes(req.user.role)) return next();
+    if (roles.includes(r) || (r === 'super_admin' && roles.includes('authority'))) return next();
     return res.status(403).json({ error: 'Forbidden' });
   };
 }
 
+const loginAttempts = new Map();
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const MAX_LOGIN_ATTEMPTS = 5;
+
+function loginKey(req, email) {
+  return `${req.ip}:${String(email).trim().toLowerCase()}`;
+}
+
+function loginBlocked(key) {
+  const entry = loginAttempts.get(key);
+  if (!entry) return false;
+  if (Date.now() - entry.firstAttempt > LOGIN_WINDOW_MS) {
+    loginAttempts.delete(key);
+    return false;
+  }
+  return entry.failures >= MAX_LOGIN_ATTEMPTS;
+}
+
+function recordLoginFailure(key) {
+  const entry = loginAttempts.get(key);
+  if (!entry || Date.now() - entry.firstAttempt > LOGIN_WINDOW_MS) {
+    loginAttempts.set(key, { firstAttempt: Date.now(), failures: 1 });
+  } else {
+    entry.failures += 1;
+  }
+}
+
 app.post('/api/signup', async (req, res) => {
-  const { name, email, password, role = 'citizen' } = req.body;
+  const { name, email, password } = req.body;
   if (!email || !password || !name) return res.status(400).json({ error: 'Missing fields' });
+  if (typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 120) return res.status(400).json({ error: 'Name must be between 2 and 120 characters' });
+  if (typeof email !== 'string' || !/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: 'Invalid email address' });
+  if (typeof password !== 'string' || password.length < 12 || password.length > 128) return res.status(400).json({ error: 'Password must be between 12 and 128 characters' });
   const exists = await findUserByEmail(email);
   if (exists) return res.status(400).json({ error: 'User exists' });
-  const hash = await bcrypt.hash(password, 8);
-  const normalizedRole = role === 'admin' ? 'authority' : role;
-  const user = { id: nanoid(), name, email, passwordHash: hash, role: normalizedRole };
+  const hash = await bcrypt.hash(password, 12);
+  const user = { id: nanoid(), name: name.trim(), email: email.trim().toLowerCase(), passwordHash: hash, role: 'citizen', accountStatus: 'active', emailVerified: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
   const created = await createUser(user);
   const token = generateToken(user);
   res.json({ token, user: { id: created.id || created._id || user.id, name: user.name, email: user.email, role: user.role } });
@@ -164,10 +224,20 @@ app.post('/api/signup', async (req, res) => {
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Missing fields' });
+  const key = loginKey(req, email);
+  if (loginBlocked(key)) return res.status(429).json({ error: 'Too many login attempts. Try again later.' });
   const user = await findUserByEmail(email);
-  if (!user) return res.status(400).json({ error: 'Invalid credentials' });
+  if (!user) {
+    recordLoginFailure(key);
+    return res.status(400).json({ error: 'Invalid credentials' });
+  }
+  if (user.accountStatus && user.accountStatus !== 'active') return res.status(403).json({ error: 'Account is not active' });
   const ok = await bcrypt.compare(password, user.passwordHash || '');
-  if (!ok) return res.status(400).json({ error: 'Invalid credentials' });
+  if (!ok) {
+    recordLoginFailure(key);
+    return res.status(400).json({ error: 'Invalid credentials' });
+  }
+  loginAttempts.delete(key);
   const normalizedRole = user.role === 'admin' ? 'authority' : user.role;
   const token = generateToken({ id: user.id || user._id, role: normalizedRole, name: user.name, email: user.email });
   res.json({ token, user: { id: user.id || user._id, name: user.name, email: user.email, role: normalizedRole } });
@@ -322,11 +392,262 @@ app.post('/api/notifications/:id/read', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/reports', authMiddleware, async (req, res) => {
-  const { category, description, location, severity, evidenceUrl } = req.body;
+  const { category, description, location, severity, evidenceUrl, captureTimestamp, captureMetadata } = req.body;
   if (!category || !description) return res.status(400).json({ error: 'Missing fields' });
-  const report = { id: nanoid(), userId: req.user.id, userName: req.user.name, category, description, location, severity, evidenceUrl: evidenceUrl || null, timestamp: new Date().toISOString(), status: 'submitted' };
+  const report = {
+    id: nanoid(),
+    userId: req.user.id,
+    userName: req.user.name,
+    category,
+    description,
+    location,
+    severity,
+    evidenceUrl: evidenceUrl || null,
+    captureTimestamp: captureTimestamp || null,
+    captureMetadata: captureMetadata || null,
+    timestamp: new Date().toISOString(),
+    status: 'submitted'
+  };
   const created = await insertReportDoc(report);
   res.json(created);
+});
+
+// AI Media Inspection Endpoint
+app.post('/api/inspect-media', authMiddleware, async (req, res) => {
+  try {
+    const { imageUrl, category, captureMetadata } = req.body;
+
+    if (!imageUrl) {
+      return res.status(400).json({ error: 'Missing imageUrl' });
+    }
+
+    appendLog('inspect-media', { userId: req.user.id, category, hasMetadata: !!captureMetadata });
+
+    // Call ML service for hazard detection
+    const ML_VISION_URL = process.env.ML_VISION_URL || 'http://127.0.0.1:5001';
+
+    let aiResult;
+    try {
+      const response = await axios.post(`${ML_VISION_URL}/inspect`, {
+        image_url: imageUrl,
+        expected_category: category,
+        metadata: captureMetadata
+      }, {
+        timeout: 10000,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      aiResult = response.data;
+    } catch (mlError) {
+      console.warn('[AI Inspection] ML service unavailable, using rule-based fallback:', mlError.message);
+
+      // Fallback: Rule-based assessment with uncertainty
+      const hasValidMetadata = captureMetadata && captureMetadata.captureMethod === 'camera_api';
+      const recentCapture = captureMetadata && captureMetadata.captureTimestamp
+        ? (Date.now() - new Date(captureMetadata.captureTimestamp).getTime()) < 60000
+        : false;
+
+      aiResult = {
+        is_relevant: hasValidMetadata && recentCapture,
+        hazard_type: category || 'unknown',
+        apparent_severity: 'moderate',
+        confidence: hasValidMetadata ? 0.65 : 0.45,
+        evidence_status: hasValidMetadata ? 'manual_verification_required' : 'insufficient_evidence',
+        inspection_method: 'rule_based_fallback',
+        reasons: [
+          hasValidMetadata ? 'Captured via camera API' : 'No camera metadata available',
+          recentCapture ? 'Recent capture timestamp' : 'Capture timestamp missing or old',
+          'Full AI vision analysis unavailable - manual review recommended'
+        ],
+        recommendation: hasValidMetadata
+          ? 'Accept for manual verification by authorities'
+          : 'Request recapture with proper camera access'
+      };
+    }
+
+    // Determine final status based on AI confidence and evidence quality
+    let finalStatus = 'submitted';
+    let finalSeverity = aiResult.apparent_severity || 'moderate';
+
+    if (aiResult.confidence >= 0.85 && aiResult.is_relevant) {
+      finalStatus = 'accepted_for_review';
+    } else if (aiResult.confidence < 0.50 || !aiResult.is_relevant) {
+      finalStatus = 'needs_verification';
+    } else {
+      finalStatus = 'manual_verification_required';
+    }
+
+    res.json({
+      success: true,
+      ai_result: aiResult,
+      recommended_status: finalStatus,
+      recommended_severity: finalSeverity,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (err) {
+    appendLog('inspect-media-error', { err: err.message });
+    res.status(500).json({
+      error: 'Media inspection failed',
+      message: err.message,
+      fallback_status: 'manual_verification_required'
+    });
+  }
+});
+
+// ========================================
+// ML Prediction API Routes
+// ========================================
+
+// Get ML service health and model info
+app.get('/api/ml/status', authMiddleware, async (req, res) => {
+  const health = await checkMLHealth();
+  res.json(health);
+});
+
+// Predict risk from environmental features
+app.post('/api/predict', authMiddleware, async (req, res) => {
+  try {
+    const features = req.body;
+    const prediction = await predictRisk(features);
+    res.json(prediction);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Fetch real environmental data for a location and predict risk
+app.post('/api/predict/location', authMiddleware, async (req, res) => {
+  try {
+    const { lat, lng, historicalRisk, satelliteIndicator } = req.body;
+    if (!lat || !lng) return res.status(400).json({ error: 'Missing lat/lng' });
+
+    appendLog('predict-location', { lat, lng });
+
+    // Fetch real environmental data
+    const envData = await fetchEnvironmentalData({
+      lat: Number(lat),
+      lng: Number(lng),
+      historicalRisk: Number(historicalRisk || 50),
+      satelliteIndicator: Number(satelliteIndicator || 50)
+    });
+
+    if (!envData) {
+      return res.status(500).json({ error: 'Failed to fetch environmental data' });
+    }
+
+    // Predict risk using ML model
+    const prediction = await predictRisk(envData);
+
+    res.json({
+      location: { lat: envData.latitude, lng: envData.longitude },
+      environmental_data: envData,
+      prediction,
+      fetched_at: envData.fetched_at
+    });
+  } catch (err) {
+    appendLog('predict-location-error', { err: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Refresh all risk zones with real data and ML predictions
+app.post('/api/risk-zones/refresh', authMiddleware, requireRole('authority'), async (req, res) => {
+  try {
+    appendLog('refresh-risk-zones-start');
+
+    const zones = await getRiskZonesData();
+    if (!zones || zones.length === 0) {
+      return res.status(400).json({ error: 'No risk zones to refresh' });
+    }
+
+    const locations = zones.map(z => ({
+      id: z.id,
+      name: z.name,
+      lat: z.location.lat,
+      lng: z.location.lng,
+      historicalRisk: z.historicalRisk || 50,
+      satelliteIndicator: z.satelliteIndicator || 50
+    }));
+
+    // Fetch environmental data for all zones
+    appendLog('fetching-environmental-data', { count: locations.length });
+    const envDataResults = await fetchEnvironmentalDataBatch(locations, 1000); // 1s delay between requests
+
+    // Predict risk for all zones
+    const predictions = await predictBatch(envDataResults.map(r => r.environmentalData));
+
+    // Update zones in database and check for alerts
+    const updatedZones = [];
+    const newAlerts = [];
+
+    for (let i = 0; i < envDataResults.length; i++) {
+      const result = envDataResults[i];
+      const prediction = predictions.predictions[i];
+      const zone = zones.find(z => z.id === result.id);
+
+      if (!zone || !prediction) continue;
+
+      const updatedZone = {
+        ...zone,
+        ...result.environmentalData,
+        riskLevel: prediction.risk_category,
+        riskScore: prediction.risk_score,
+        confidence: prediction.confidence,
+        lastUpdated: new Date().toISOString(),
+        dataSource: 'real_api_ml_prediction',
+        modelVersion: predictions.model_version
+      };
+
+      await getDb().collection('riskZones').updateOne(
+        { id: zone.id },
+        { $set: updatedZone }
+      );
+
+      updatedZones.push(updatedZone);
+
+      // Create alert if risk is critical or high
+      if (prediction.risk_category === 'critical' && prediction.risk_score >= 85) {
+        const alert = {
+          id: nanoid(),
+          zoneId: zone.id,
+          title: `CRITICAL RISK — ${zone.name}`,
+          message: `AI model predicts critical landslide risk (score: ${prediction.risk_score}, confidence: ${(prediction.confidence * 100).toFixed(1)}%). Immediate action required.`,
+          riskLevel: 'critical',
+          district: zone.location.district,
+          location: zone.location,
+          timestamp: new Date().toISOString(),
+          acknowledged: false,
+          dataSource: 'ai_prediction',
+          affectedRoads: [],
+          affectedVillages: []
+        };
+
+        await getDb().collection('alerts').insertOne(alert);
+        newAlerts.push(alert);
+
+        // Broadcast via SSE to all authority users
+        const authorities = await getDb().collection('users').find({ role: { $in: ['authority', 'super_admin'] } }).toArray();
+        authorities.forEach(auth => {
+          sendSse(auth.id || auth._id, 'alert', alert);
+        });
+      }
+    }
+
+    appendLog('refresh-risk-zones-complete', { updated: updatedZones.length, alerts: newAlerts.length });
+
+    res.json({
+      success: true,
+      updated: updatedZones.length,
+      zones: updatedZones,
+      new_alerts: newAlerts.length,
+      alerts: newAlerts,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    appendLog('refresh-risk-zones-error', { err: err.message });
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.post('/api/reset', authMiddleware, requireRole('admin', 'authority'), async (req, res) => {
@@ -349,7 +670,7 @@ init().then(() => {
 const uploadsDir = path.join(__dirname, 'uploads');
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
-  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
+  filename: (req, file, cb) => cb(null, `${Date.now()}-${nanoid()}${path.extname(file.originalname).toLowerCase()}`),
 });
 const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
 

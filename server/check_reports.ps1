@@ -1,5 +1,5 @@
 $base='http://127.0.0.1:4000'
-$body = @{ email = 'admin@example.com'; password = 'adminpass' } | ConvertTo-Json
+$body = @{ email = $env:TEST_ADMIN_EMAIL; password = $env:TEST_ADMIN_PASSWORD } | ConvertTo-Json
 $login = Invoke-RestMethod -Uri "$base/api/login" -Method Post -Body $body -ContentType 'application/json'
 $token = $login.token
 Write-Output "Token length: $($token.Length)"

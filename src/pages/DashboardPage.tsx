@@ -11,11 +11,11 @@ import { SatelliteLayerControl, type SatelliteLayerMode } from '../components/ma
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { RiskBadge } from '../components/ui/Badge';
 import { EvaluatorExplanationCard, EvaluatorHeaderBanner } from '../components/ui/EvaluatorExplanationCard';
-import { MapPin, Users, Route, FileWarning, Layers, Activity, AlertTriangle, Target, RefreshCw } from 'lucide-react';
+import { MapPin, Users, Route, FileWarning, Layers, Activity, AlertTriangle, Target, RefreshCw, Cpu, Database, CheckCircle2 } from 'lucide-react';
 import type { RiskLevel, RiskZone } from '../types';
 
 export function DashboardPage() {
-  const { riskZones, alerts, roads, districts, citizenReports, tickCount } = useMonitorData();
+  const { riskZones, alerts, roads, districts, citizenReports, tickCount, lastUpdated, isLoading, refreshRiskZones } = useMonitorData();
   const [showEvaluatorExplanations, setShowEvaluatorExplanations] = useState(true);
   const [selectedZone, setSelectedZone] = useState<RiskZone | null>(null);
 
@@ -69,6 +69,37 @@ export function DashboardPage() {
         isEvaluatorMode={showEvaluatorExplanations}
         onToggleEvaluatorMode={() => setShowEvaluatorExplanations(!showEvaluatorExplanations)}
       />
+
+      {/* Live AI Pipeline & Data Source Status Banner */}
+      <div className="rounded-xl border border-accent/40 bg-card/90 p-3.5 shadow-md flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-1.5 text-accent-bright font-semibold">
+            <Cpu className="h-4 w-4" />
+            <span>AI Model: <strong className="font-mono text-main">XGBoost v1.0.0</strong></span>
+            <span className="bg-accent/20 text-accent-bright px-1.5 py-0.5 rounded text-[10px] font-mono border border-accent/30">90.5% Accuracy</span>
+          </div>
+
+          <div className="hidden sm:flex items-center gap-1.5 text-dim">
+            <Database className="h-3.5 w-3.5 text-green-400" />
+            <span>Live Data Feeds: <span className="text-main font-medium">Open-Meteo (Rainfall/Moisture) + Open-Elevation (DEM)</span></span>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-dim">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+            <span>Last AI Sync: <span className="text-main font-mono">{lastUpdated.toLocaleTimeString()}</span></span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => refreshRiskZones()}
+          disabled={isLoading}
+          className="flex items-center gap-1.5 rounded-lg border border-accent-bright/50 bg-accent/20 px-3 py-1.5 font-semibold text-accent-bright hover:bg-accent/30 disabled:opacity-50 transition-all ml-auto cursor-pointer"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+          {isLoading ? 'Running ML Inference...' : 'Fetch Live APIs & Predict'}
+        </button>
+      </div>
 
       {/* Interactive Zone Focus Active Banner */}
       <AnimatePresence>

@@ -377,6 +377,8 @@ interface MonitorDataContextType {
   lastUpdated: Date;
   tickCount: number;
   pendingSyncCount: number;
+  isLoading: boolean;
+  refreshRiskZones: () => Promise<void>;
   acknowledgeAlert: (id: string) => void;
   submitReport: (input: SubmitReportInput) => CitizenReport | Promise<any> | null;
   syncPendingReports: () => number;
@@ -426,80 +428,147 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
   const [lastUpdated, setLastUpdated] = useState(() => new Date());
   const [tickCount, setTickCount] = useState(0);
   const [pendingSyncCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Derives district summaries dynamically from active risk zones
   const districts = useMemo(() => recalcDistricts(riskZones, []), [riskZones]);
   const { token } = useApp();
 
+  // Refresh risk zones with real environmental data and ML predictions
+  const refreshRiskZones = useCallback(async () => {
+    if (!token) return;
+    setIsLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const response = await fetch('/api/risk-zones/refresh', {
+        method: 'POST',
+        headers
+      });
+
+      if (!response.ok) {
+        console.warn('Failed to refresh risk zones:', response.statusText);
+        setIsLoading(false);
+        return;
+      }
+
+      const result = await response.json();
+      if (result.zones && Array.isArray(result.zones)) {
+        setRiskZones(result.zones);
+
+        // Update alerts if new ones were created
+        if (result.alerts && Array.isArray(result.alerts) && result.alerts.length > 0) {
+          setAlerts(prev => [...result.alerts, ...prev]);
+        }
+
+        // Update risk trend
+        const counts = { critical: 0, high: 0, moderate: 0, low: 0 };
+        result.zones.forEach((z: RiskZone) => { counts[z.riskLevel]++; });
+
+        setRiskTrend(rt => [
+          ...rt.slice(-23),
+          {
+            hour: `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`,
+            ...counts,
+          },
+        ]);
+
+        setLastUpdated(new Date());
+        console.log('✓ Risk zones refreshed with real data:', result.updated, 'zones updated');
+      }
+    } catch (error) {
+      console.error('Error refreshing risk zones:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [token]);
+
   useEffect(() => {
     if (!token) return;
     const headers = { Authorization: `Bearer ${token}` };
+
+    // Initial fetch of risk zones, alerts, and reports
     fetch('/api/risk-zones', { headers })
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) setRiskZones(data);
       })
       .catch(() => {});
+
     fetch('/api/alerts', { headers })
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) setAlerts(data);
       })
       .catch(() => {});
+
     fetch('/api/reports', { headers })
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) setCitizenReports(data);
       })
       .catch(() => {});
-  }, [token]);
+
+    // Refresh with real data immediately
+    refreshRiskZones();
+  }, [token, refreshRiskZones]);
 
   const liveTick = useCallback(() => {
-    setRiskZones(prev => {
-      const updated = prev.map(zone => {
-        const rainfall = Math.round(jitter(zone.rainfall, 8, 20, 220));
-        const soilMoisture = Math.round(jitter(zone.soilMoisture, 4, 25, 95));
-        const satelliteIndicator = Math.round(jitter(zone.satelliteIndicator, 3, 10, 95));
-        return applyRiskToZone({ ...zone, rainfall, soilMoisture, satelliteIndicator });
+    // For demo/simulation mode: jitter environmental data
+    // In production, this should be replaced with periodic API calls
+    const USE_SIMULATION = false; // Set to false to use real API refresh
+
+    if (USE_SIMULATION) {
+      setRiskZones(prev => {
+        const updated = prev.map(zone => {
+          const rainfall = Math.round(jitter(zone.rainfall, 8, 20, 220));
+          const soilMoisture = Math.round(jitter(zone.soilMoisture, 4, 25, 95));
+          const satelliteIndicator = Math.round(jitter(zone.satelliteIndicator, 3, 10, 95));
+          return applyRiskToZone({ ...zone, rainfall, soilMoisture, satelliteIndicator });
+        });
+
+        const counts = { critical: 0, high: 0, moderate: 0, low: 0 };
+        updated.forEach(z => { counts[z.riskLevel]++; });
+
+        setRiskTrend(rt => [
+          ...rt.slice(-23),
+          {
+            hour: `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`,
+            ...counts,
+          },
+        ]);
+        setAlerts(a => maybeEscalateAlert(a, updated));
+
+        return updated;
       });
 
-      const counts = { critical: 0, high: 0, moderate: 0, low: 0 };
-      updated.forEach(z => { counts[z.riskLevel]++; });
-
-      setRiskTrend(rt => [
-        ...rt.slice(-23),
-        {
-          hour: `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`,
-          ...counts,
-        },
-      ]);
-      setAlerts(a => maybeEscalateAlert(a, updated));
-
-      return updated;
-    });
-
-    setWeatherHistory(prev => {
-      const defaultLast: WeatherData = {
-        date: new Date().toISOString().split('T')[0],
-        rainfall: 150,
-        soilMoisture: 75,
-        temperature: 22,
-        humidity: 85,
-      };
-      const last = prev && prev.length ? prev[prev.length - 1] : defaultLast;
-      const next: WeatherData = {
-        date: new Date().toISOString().split('T')[0],
-        rainfall: Math.round(jitter(last.rainfall ?? defaultLast.rainfall, 12, 15, 220)),
-        soilMoisture: Math.round(jitter(last.soilMoisture ?? defaultLast.soilMoisture, 5, 25, 95)),
-        temperature: Math.round(jitter(last.temperature ?? defaultLast.temperature, 1.5, 14, 32)),
-        humidity: Math.round(jitter(last.humidity ?? defaultLast.humidity, 4, 55, 98)),
-      };
-      return [...(prev || []).slice(-13), next];
-    });
+      setWeatherHistory(prev => {
+        const defaultLast: WeatherData = {
+          date: new Date().toISOString().split('T')[0],
+          rainfall: 150,
+          soilMoisture: 75,
+          temperature: 22,
+          humidity: 85,
+        };
+        const last = prev && prev.length ? prev[prev.length - 1] : defaultLast;
+        const next: WeatherData = {
+          date: new Date().toISOString().split('T')[0],
+          rainfall: Math.round(jitter(last.rainfall ?? defaultLast.rainfall, 12, 15, 220)),
+          soilMoisture: Math.round(jitter(last.soilMoisture ?? defaultLast.soilMoisture, 5, 25, 95)),
+          temperature: Math.round(jitter(last.temperature ?? defaultLast.temperature, 1.5, 14, 32)),
+          humidity: Math.round(jitter(last.humidity ?? defaultLast.humidity, 4, 55, 98)),
+        };
+        return [...(prev || []).slice(-13), next];
+      });
+    } else {
+      // Real mode: refresh from API periodically (every 5 minutes)
+      if (token && tickCount % 50 === 0) { // Every ~5 minutes at 6s interval
+        refreshRiskZones();
+      }
+    }
 
     setLastUpdated(new Date());
     setTickCount(c => c + 1);
-  }, []);
+  }, [token, tickCount, refreshRiskZones]);
 
   useEffect(() => {
     const id = setInterval(liveTick, 6000);
@@ -573,6 +642,8 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
       lastUpdated,
       tickCount,
       pendingSyncCount,
+      isLoading,
+      refreshRiskZones,
       acknowledgeAlert,
       submitReport,
       syncPendingReports,
@@ -593,6 +664,8 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
       lastUpdated,
       tickCount,
       pendingSyncCount,
+      isLoading,
+      refreshRiskZones,
       acknowledgeAlert,
       submitReport,
       syncPendingReports,

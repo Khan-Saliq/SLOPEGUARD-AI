@@ -4,6 +4,7 @@ import type { User } from '../types';
 interface AppContextType {
   user: User | null;
   token: string | null;
+  
   login: (token: string, user: User) => void;
   logout: () => void;
   isOffline: boolean;

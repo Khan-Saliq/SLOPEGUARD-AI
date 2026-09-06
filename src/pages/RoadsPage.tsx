@@ -58,10 +58,10 @@ export function RoadsPage() {
         {showEvaluatorExplanations && (
           <EvaluatorExplanationCard
             title="Automated Emergency Safe Route Pathfinder Engine"
-            purpose="Calculates safe emergency relief and evacuation routes bypassing active landslide blockages and vulnerable slope passes to reach isolated mountain villages."
-            inputs="GIS road network vectors, real-time road blockage statuses, terrain slope steepness, and village geographic coordinates."
+            purpose="Calculates safe emergency relief and evacuation routes using real road routing APIs (OpenRouteService/OSRM), analyzing hazard zones and blocked roads to identify safer alternatives for reaching isolated villages."
+            inputs="Road network routing API, GPS coordinates, blocked road locations, risk zone data, real-time distance/time calculations."
             psReference="PS_26001 Section 6.8, 6.9 & 16.0"
-            evaluatorNote="Demonstrates automated decision support for emergency teams, allowing NDRF and district authorities to quickly dispatch relief supplies without getting stuck behind blocked mountain passes."
+            evaluatorNote="Uses actual road routing services with turn-by-turn navigation. Analyzes route proximity to hazard zones and provides safety warnings. No straight-line routing - calculates real drivable paths with distance and time estimates."
           />
         )}
       </div>

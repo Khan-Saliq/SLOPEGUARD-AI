@@ -36,6 +36,8 @@ function matchFilter(item, filter = {}) {
   for (const [k, v] of Object.entries(filter)) {
     if (k === '_id' || k === 'id') {
       if (item._id != v && item.id != v) return false;
+    } else if (v && typeof v === 'object' && Array.isArray(v.$in)) {
+      if (!v.$in.includes(item[k])) return false;
     } else if (item[k] !== v) {
       return false;
     }
@@ -142,14 +144,8 @@ function getDb() {
 }
 
 async function seedAdminIfEmpty() {
-  const users = getDb().collection('users');
-  const count = await users.countDocuments();
-  if (count === 0) {
-    const bcrypt = require('bcryptjs');
-    const hash = await bcrypt.hash('adminpass', 8);
-    await users.insertOne({ id: 'u-admin', name: 'Administrator', email: 'admin@example.com', passwordHash: hash, role: 'authority', createdAt: new Date() });
-    console.log('Seeded authority user: admin@example.com / adminpass');
-  }
+  // Administrative identities must be created explicitly by create_super_admin.js.
+  return false;
 }
 
 module.exports = { connectMongo, getDb, seedAdminIfEmpty };

@@ -1,5 +1,5 @@
 $base='http://127.0.0.1:4000'
-$admin = @{ email='admin@example.com'; password='adminpass' } | ConvertTo-Json
+$admin = @{ email=$env:TEST_ADMIN_EMAIL; password=$env:TEST_ADMIN_PASSWORD } | ConvertTo-Json
 $cit = @{ email='citizen@example.com'; password='citizenpass' } | ConvertTo-Json
 $loginAdmin = Invoke-RestMethod -Uri "$base/api/login" -Method Post -Body $admin -ContentType 'application/json'
 $adminToken = $loginAdmin.token

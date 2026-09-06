@@ -1,0 +1,55 @@
+{
+  "model_type": "XGBoost Multi-class Classifier",
+  "model_version": "1.0.0",
+  "trained_at": "2026-09-06T14:11:45.960157",
+  "features": [
+    "elevation",
+    "slope",
+    "rainfall_24h",
+    "rainfall_72h",
+    "rainfall_intensity",
+    "soil_moisture",
+    "satellite_indicator",
+    "historical_landslide_occurrence"
+  ],
+  "risk_levels": {
+    "0": "low",
+    "1": "moderate",
+    "2": "high",
+    "3": "critical"
+  },
+  "feature_importance": [
+    {
+      "feature": "rainfall_intensity",
+      "importance": 0.34415706992149353
+    },
+    {
+      "feature": "rainfall_72h",
+      "importance": 0.20128941535949707
+    },
+    {
+      "feature": "rainfall_24h",
+      "importance": 0.16713352501392365
+    },
+    {
+      "feature": "slope",
+      "importance": 0.10124824941158295
+    },
+    {
+      "feature": "soil_moisture",
+      "importance": 0.09132847934961319
+    },
+    {
+      "feature": "satellite_indicator",
+      "importance": 0.03386761620640755
+    },
+    {
+      "feature": "historical_landslide_occurrence",
+      "importance": 0.032832756638526917
+    },
+    {
+      "feature": "elevation",
+      "importance": 0.028142806142568588
+    }
+  ]
+}

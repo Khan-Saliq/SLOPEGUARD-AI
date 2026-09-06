@@ -60,24 +60,24 @@ export function useOfflineSync() {
 
   // Queue report when offline
   const saveReportOffline = (reportData: Partial<CitizenReport>): CitizenReport => {
-    const offlineId = `OFFLINE-${Date.now()}`;
+    if (!reportData.userId || !reportData.userName || !reportData.category || !reportData.description || !reportData.location || !reportData.severity) {
+      throw new Error('Offline reports require the authenticated user, hazard details, location, and severity.');
+    }
+    const offlineId = `OFFLINE-${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now()}`;
     const newReport: CitizenReport = {
       id: offlineId,
-      userId: reportData.userId || 'field_officer_offline',
-      userName: reportData.userName || 'Offline Field Official',
-      category: reportData.category || 'landslide',
-      description: reportData.description || 'Offline field observation recorded in low-network zone',
-      location: reportData.location || {
-        lat: 25.51, lng: 90.18,
-        area: 'Remote Hill Corridor', city: 'Nokrek Range', district: 'West Garo Hills', state: 'Meghalaya',
-      },
-      gpsAccuracy: reportData.gpsAccuracy || 12,
-      severity: reportData.severity || 'high',
-      evidenceAssessment: reportData.evidenceAssessment || 'likely_genuine',
-      mediaAuthenticity: reportData.mediaAuthenticity || 'likely_original',
-      aiConfidence: reportData.aiConfidence || 85,
-      trustScore: reportData.trustScore || 80,
-      actionPriority: reportData.actionPriority || 75,
+      userId: reportData.userId,
+      userName: reportData.userName,
+      category: reportData.category,
+      description: reportData.description,
+      location: reportData.location,
+      gpsAccuracy: reportData.gpsAccuracy,
+      severity: reportData.severity,
+      evidenceAssessment: reportData.evidenceAssessment || 'insufficient',
+      mediaAuthenticity: reportData.mediaAuthenticity || 'unknown',
+      aiConfidence: reportData.aiConfidence || 0,
+      trustScore: reportData.trustScore || 0,
+      actionPriority: reportData.actionPriority || 0,
       status: 'pending_sync',
       timestamp: new Date().toISOString(),
     };

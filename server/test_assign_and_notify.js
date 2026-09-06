@@ -1,7 +1,7 @@
 (async function(){
   try{
     const base = 'http://localhost:4000';
-    const loginRes = await (await fetch(`${base}/api/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'admin@example.com',password:'adminpass'})})).json();
+    const loginRes = await (await fetch(`${base}/api/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:process.env.TEST_ADMIN_EMAIL,password:process.env.TEST_ADMIN_PASSWORD})})).json();
     const token = loginRes.token;
     console.log('token:', !!token);
     const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
