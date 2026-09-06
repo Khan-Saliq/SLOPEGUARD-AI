@@ -26,21 +26,14 @@ export function AnalyticsPage() {
   // Dynamic Radar Chart data based on selectedZone or regional average
   const radarData = selectedZone
     ? [
-        { factor: 'Rainfall (W₁)', value: Math.round(clamp(selectedZone.rainfall / 200, 0, 1) * 100) },
-        { factor: 'Soil Moisture (W₂)', value: selectedZone.soilMoisture },
-        { factor: 'Slope/Terrain (W₃)', value: Math.round(clamp(selectedZone.slope / 55, 0, 1) * 100) },
-        { factor: 'Historical Risk (W₄)', value: selectedZone.historicalRisk },
-        { factor: 'Satellite Imagery (W₅)', value: selectedZone.satelliteIndicator },
-        { factor: 'Field Reports (W₆)', value: selectedZone.riskScore > 75 ? 88 : 55 },
-      ]
-    : [
-        { factor: 'Rainfall (W₁)', value: 78 },
-        { factor: 'Soil Moisture (W₂)', value: 72 },
-        { factor: 'Slope/Terrain (W₃)', value: 65 },
-        { factor: 'Historical Risk (W₄)', value: 80 },
-        { factor: 'Satellite Imagery (W₅)', value: 58 },
-        { factor: 'Citizen Reports (W₆)', value: 62 },
-      ];
+        { factor: 'Rainfall', value: clamp(Number(selectedZone.rainfall) / 2, 0, 100) },
+        { factor: 'Soil Moisture', value: clamp(Number(selectedZone.soilMoisture), 0, 100) },
+        { factor: 'Slope', value: clamp(Number(selectedZone.slope) / 0.55, 0, 100) },
+        { factor: 'Historical', value: clamp(Number(selectedZone.historicalRisk), 0, 100) },
+        { factor: 'Satellite', value: clamp(Number(selectedZone.satelliteIndicator), 0, 100) },
+        { factor: 'Prediction Confidence', value: clamp(Number(selectedZone.confidence || 0) * 100, 0, 100) },
+      ].filter(item => Number.isFinite(item.value))
+    : [];
 
   const riskScoreData = (riskZones || []).map(z => ({
     id: z.id,
@@ -321,27 +314,27 @@ export function AnalyticsPage() {
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-dim">
                   <span>W₁ Rainfall (30%):</span>
-                  <span className="font-mono text-white font-bold">{selectedZone ? `${Math.round(selectedZone.rainfall * 0.3)} pts (${selectedZone.rainfall}mm)` : '45.0 pts'}</span>
+                  <span className="font-mono text-white font-bold">{selectedZone && Number.isFinite(Number(selectedZone.rainfall)) ? `${Math.round(Number(selectedZone.rainfall) * 0.3)} pts (${selectedZone.rainfall}mm)` : 'Data unavailable'}</span>
                 </div>
                 <div className="flex justify-between items-center text-dim">
                   <span>W₂ Soil Moisture (20%):</span>
-                  <span className="font-mono text-white font-bold">{selectedZone ? `${Math.round(selectedZone.soilMoisture * 0.2)} pts (${selectedZone.soilMoisture}%)` : '17.6 pts'}</span>
+                  <span className="font-mono text-white font-bold">{selectedZone && Number.isFinite(Number(selectedZone.soilMoisture)) ? `${Math.round(Number(selectedZone.soilMoisture) * 0.2)} pts (${selectedZone.soilMoisture}%)` : 'Data unavailable'}</span>
                 </div>
                 <div className="flex justify-between items-center text-dim">
                   <span>W₃ Slope Gradient (20%):</span>
-                  <span className="font-mono text-white font-bold">{selectedZone ? `${Math.round(selectedZone.slope * 0.36)} pts (${selectedZone.slope}°)` : '17.2 pts'}</span>
+                  <span className="font-mono text-white font-bold">{selectedZone && Number.isFinite(Number(selectedZone.slope)) ? `${Math.round(Number(selectedZone.slope) * 0.36)} pts (${selectedZone.slope}°)` : 'Data unavailable'}</span>
                 </div>
                 <div className="flex justify-between items-center text-dim">
                   <span>W₄ History (15%):</span>
-                  <span className="font-mono text-white font-bold">{selectedZone ? `${Math.round(selectedZone.historicalRisk * 0.15)} pts` : '13.2 pts'}</span>
+                  <span className="font-mono text-white font-bold">{selectedZone && Number.isFinite(Number(selectedZone.historicalRisk)) ? `${Math.round(Number(selectedZone.historicalRisk) * 0.15)} pts` : 'Data unavailable'}</span>
                 </div>
                 <div className="flex justify-between items-center text-dim">
                   <span>W₅ Field Satellite (15%):</span>
-                  <span className="font-mono text-white font-bold">{selectedZone ? `${Math.round(selectedZone.satelliteIndicator * 0.15)} pts` : '12.8 pts'}</span>
+                  <span className="font-mono text-white font-bold">{selectedZone && Number.isFinite(Number(selectedZone.satelliteIndicator)) ? `${Math.round(Number(selectedZone.satelliteIndicator) * 0.15)} pts` : 'Data unavailable'}</span>
                 </div>
                 <div className="border-t border-border/40 pt-2 flex justify-between items-center font-bold">
                   <span className="text-white">Calculated Score:</span>
-                  <span className="font-mono text-accent-bright text-sm">{selectedZone ? selectedZone.riskScore : 83} / 100</span>
+                  <span className="font-mono text-accent-bright text-sm">{selectedZone && Number.isFinite(Number(selectedZone.riskScore)) ? `${selectedZone.riskScore} / 100` : 'Data unavailable'}</span>
                 </div>
               </div>
             </div>
@@ -370,19 +363,19 @@ export function AnalyticsPage() {
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="rounded bg-black/20 p-2 border border-border/40">
                 <p className="text-dim">Focused Rainfall</p>
-                <p className="text-base font-bold text-white font-mono mt-0.5">{selectedZone ? selectedZone.rainfall : 165} mm</p>
+                <p className="text-base font-bold text-white font-mono mt-0.5">{selectedZone && Number.isFinite(Number(selectedZone.rainfall)) ? `${selectedZone.rainfall} mm` : 'Data unavailable'}</p>
               </div>
               <div className="rounded bg-black/20 p-2 border border-border/40">
                 <p className="text-dim">Soil Moisture</p>
-                <p className="text-base font-bold text-white font-mono mt-0.5">{selectedZone ? selectedZone.soilMoisture : 78} %</p>
+                <p className="text-base font-bold text-white font-mono mt-0.5">{selectedZone && Number.isFinite(Number(selectedZone.soilMoisture)) ? `${selectedZone.soilMoisture} %` : 'Data unavailable'}</p>
               </div>
               <div className="rounded bg-black/20 p-2 border border-border/40">
                 <p className="text-dim">Slope Angle</p>
-                <p className="text-base font-bold text-white font-mono mt-0.5">{selectedZone ? selectedZone.slope : 48} °</p>
+                <p className="text-base font-bold text-white font-mono mt-0.5">{selectedZone && Number.isFinite(Number(selectedZone.slope)) ? `${selectedZone.slope} °` : 'Data unavailable'}</p>
               </div>
               <div className="rounded bg-black/20 p-2 border border-border/40">
                 <p className="text-dim">Active IoT Sensors</p>
-                <p className="text-base font-bold text-accent-bright font-mono mt-0.5">{selectedZone ? '12 Nodes' : '48 Nodes'}</p>
+                <p className="text-base font-bold text-accent-bright font-mono mt-0.5">Data unavailable</p>
               </div>
             </div>
 

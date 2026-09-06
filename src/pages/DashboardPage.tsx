@@ -38,27 +38,7 @@ export function DashboardPage() {
     ? citizenReports.filter(r => r.location.district === selectedZone.location.district || r.description.includes(selectedZone.name))
     : citizenReports;
 
-  // Fallback report if none exists for that exact area
-  const displayReports = (selectedZone && filteredReports.length === 0)
-    ? [
-        {
-          id: `cr-focused-${selectedZone.id}`,
-          userId: 'u-field-1',
-          userName: 'Field Inspection Team',
-          category: 'slope_movement' as const,
-          description: `Focused field inspection telemetry active for ${selectedZone.name}. Slope angle: ${selectedZone.slope}°.`,
-          location: selectedZone.location,
-          severity: selectedZone.riskLevel,
-          status: 'submitted' as const,
-          evidenceAssessment: 'likely_genuine' as const,
-          mediaAuthenticity: 'likely_original' as const,
-          aiConfidence: 92,
-          trustScore: 90,
-          actionPriority: 88,
-          timestamp: new Date().toISOString(),
-        },
-      ]
-    : filteredReports;
+  const displayReports = filteredReports;
 
   return (
     <div className="space-y-6">

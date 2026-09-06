@@ -410,19 +410,13 @@ function maybeEscalateAlert(prev: Alert[], zones: RiskZone[]): Alert[] {
 }
 
 export function MonitorDataProvider({ children }: { children: ReactNode }) {
-  const [riskZones, setRiskZones] = useState<RiskZone[]>(INITIAL_INDIA_RISK_ZONES);
-  const [alerts, setAlerts] = useState<Alert[]>(INITIAL_INDIA_ALERTS);
+  const [riskZones, setRiskZones] = useState<RiskZone[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [roads] = useState<Road[]>([]);
   const [villages] = useState<Village[]>([]);
-  const [citizenReports, setCitizenReports] = useState<CitizenReport[]>(INITIAL_CITIZEN_REPORTS);
+  const [citizenReports, setCitizenReports] = useState<CitizenReport[]>([]);
   const [emergencyTasks, setEmergencyTasks] = useState<EmergencyTask[]>([]);
-  const [weatherHistory, setWeatherHistory] = useState<WeatherData[]>(() => [{
-    date: new Date().toISOString().split('T')[0],
-    rainfall: 165,
-    soilMoisture: 78,
-    temperature: 22,
-    humidity: 85,
-  }]);
+  const [weatherHistory, setWeatherHistory] = useState<WeatherData[]>([]);
   const [riskTrend, setRiskTrend] = useState<RiskTrendPoint[]>([]);
   const [notifications] = useState<Notification[]>([]);
   const [lastUpdated, setLastUpdated] = useState(() => new Date());
@@ -491,21 +485,21 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
     fetch('/api/risk-zones', { headers })
       .then(r => r.json())
       .then(data => {
-        if (Array.isArray(data) && data.length > 0) setRiskZones(data);
+        if (Array.isArray(data)) setRiskZones(data);
       })
       .catch(() => {});
 
     fetch('/api/alerts', { headers })
       .then(r => r.json())
       .then(data => {
-        if (Array.isArray(data) && data.length > 0) setAlerts(data);
+        if (Array.isArray(data)) setAlerts(data);
       })
       .catch(() => {});
 
     fetch('/api/reports', { headers })
       .then(r => r.json())
       .then(data => {
-        if (Array.isArray(data) && data.length > 0) setCitizenReports(data);
+        if (Array.isArray(data)) setCitizenReports(data);
       })
       .catch(() => {});
 

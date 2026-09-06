@@ -79,7 +79,26 @@ async function createUser(user) {
 }
 
 async function getRiskZonesData() {
-  return (await getDb().collection('riskZones').find().toArray()) || [];
+  return (await getDb().collection('riskZones').find().toArray()).map(normalizeRiskZone);
+}
+
+function normalizeRiskZone(zone) {
+  const environmental = zone.environmental_data || zone.environmentalData || {};
+  return {
+    ...zone,
+    riskScore: Number.isFinite(Number(zone.riskScore)) ? Number(zone.riskScore) : null,
+    riskLevel: zone.riskLevel || null,
+    confidence: Number.isFinite(Number(zone.confidence)) ? Number(zone.confidence) : null,
+    rainfall: Number.isFinite(Number(zone.rainfall)) ? Number(zone.rainfall) : (Number.isFinite(Number(zone.rainfall_24h)) ? Number(zone.rainfall_24h) : (Number.isFinite(Number(environmental.rainfall_24h)) ? Number(environmental.rainfall_24h) : null)),
+    rainfall_24h: Number.isFinite(Number(zone.rainfall_24h)) ? Number(zone.rainfall_24h) : (Number.isFinite(Number(environmental.rainfall_24h)) ? Number(environmental.rainfall_24h) : null),
+    rainfall_72h: Number.isFinite(Number(zone.rainfall_72h)) ? Number(zone.rainfall_72h) : (Number.isFinite(Number(environmental.rainfall_72h)) ? Number(environmental.rainfall_72h) : null),
+    rainfall_intensity: Number.isFinite(Number(zone.rainfall_intensity)) ? Number(zone.rainfall_intensity) : (Number.isFinite(Number(environmental.rainfall_intensity)) ? Number(environmental.rainfall_intensity) : null),
+    soilMoisture: Number.isFinite(Number(zone.soilMoisture)) ? Number(zone.soilMoisture) : (Number.isFinite(Number(zone.soil_moisture)) ? Number(zone.soil_moisture) : (Number.isFinite(Number(environmental.soil_moisture)) ? Number(environmental.soil_moisture) : null)),
+    soil_moisture: Number.isFinite(Number(zone.soil_moisture)) ? Number(zone.soil_moisture) : (Number.isFinite(Number(environmental.soil_moisture)) ? Number(environmental.soil_moisture) : null),
+    slope: Number.isFinite(Number(zone.slope)) ? Number(zone.slope) : (Number.isFinite(Number(environmental.slope)) ? Number(environmental.slope) : null),
+    elevation: Number.isFinite(Number(zone.elevation)) ? Number(zone.elevation) : (Number.isFinite(Number(environmental.elevation)) ? Number(environmental.elevation) : null),
+    dataStatus: zone.dataStatus || (Object.keys(environmental).length > 0 ? 'available' : 'awaiting_data_source'),
+  };
 }
 
 async function getAlertsData() {
@@ -253,6 +272,18 @@ app.get('/api/me', authMiddleware, async (req, res) => {
 app.get('/api/risk-zones', authMiddleware, async (req, res) => {
   const data = await getRiskZonesData();
   res.json(data || []);
+});
+
+app.get('/api/risk-zones/:id/environment', authMiddleware, async (req, res) => {
+  const zone = await getDb().collection('riskZones').findOne({ id: req.params.id });
+  if (!zone) return res.status(404).json({ error: 'Risk zone not found' });
+  const normalized = normalizeRiskZone(zone);
+  res.json({
+    zone: normalized,
+    environmental_data: zone.environmental_data || zone.environmentalData || null,
+    prediction: zone.prediction || null,
+    last_updated: zone.lastUpdated || null,
+  });
 });
 
 app.get('/api/alerts', authMiddleware, async (req, res) => {
@@ -591,6 +622,8 @@ app.post('/api/risk-zones/refresh', authMiddleware, requireRole('authority'), as
       const updatedZone = {
         ...zone,
         ...result.environmentalData,
+        environmental_data: result.environmentalData,
+        prediction,
         riskLevel: prediction.risk_category,
         riskScore: prediction.risk_score,
         confidence: prediction.confidence,
