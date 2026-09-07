@@ -12,6 +12,8 @@ const { connectMongo, getDb } = require('./mongo');
 const { fetchEnvironmentalData, fetchEnvironmentalDataBatch } = require('./dataFetcher');
 const { checkMLHealth, predictRisk, predictBatch } = require('./mlClient');
 const { analyzeImageWithHuggingFace } = require('./services/huggingfaceImageService');
+const { calculateDirections } = require('./services/directionsService');
+const { evaluateRouteSafety, rankAlternativeRoutes } = require('./services/routeSafetyService');
 
 const app = express();
 app.use(cors());
@@ -45,8 +47,77 @@ async function seedDefaultRiskZones() {
       { id: nanoid(), name: 'Itanagar Papum Pare Slope', location: { lat: 27.10, lng: 93.62, district: 'Papum Pare', state: 'Arunachal Pradesh' }, historicalRisk: 55, satelliteIndicator: 50, population: 5200, infrastructureCount: 15 },
       { id: nanoid(), name: 'Imphal West Hill Edge', location: { lat: 24.81, lng: 93.93, district: 'Imphal West', state: 'Manipur' }, historicalRisk: 85, satelliteIndicator: 75, population: 6700, infrastructureCount: 19 }
     ];
-    await zones.insertMany(defaultZones);
-    console.log(`Seeded ${defaultZones.length} default risk zones`);
+async function seedDefaultEvacuationData() {
+  const db = getDb();
+  
+  // 1. Seed Roads
+  const roadsCol = db.collection('roads');
+  if (await roadsCol.countDocuments() === 0) {
+    const defaultRoads = [
+      { id: 'r1', name: 'NH-44 Shillong-Silchar Highway', status: 'blocked', district: 'East Khasi Hills', riskLevel: 'critical', coordinates: [[25.57, 91.88], [25.40, 92.15]], lastReport: new Date(Date.now() - 40 * 60000).toISOString() },
+      { id: 'r2', name: 'SH-1 Cherrapunji Access Road', status: 'blocked', district: 'East Khasi Hills', riskLevel: 'high', coordinates: [[25.27, 91.73], [25.35, 91.78]], lastReport: new Date(Date.now() - 90 * 60000).toISOString() },
+      { id: 'r3', name: 'NH-37 Guwahati-Jorhat Highway', status: 'operational', district: 'Kamrup Metropolitan', riskLevel: 'moderate', coordinates: [[26.18, 91.74], [26.45, 92.80]], lastReport: new Date(Date.now() - 15 * 60000).toISOString() },
+      { id: 'r4', name: 'NH-10 Gangtok-Siliguri Pass', status: 'vulnerable', district: 'Gangtok', riskLevel: 'high', coordinates: [[27.33, 88.61], [27.00, 88.45]], lastReport: new Date(Date.now() - 120 * 60000).toISOString() },
+      { id: 'r5', name: 'NH-2 Kohima-Dimapur Bypass', status: 'operational', district: 'Kohima', riskLevel: 'moderate', coordinates: [[25.67, 94.10], [25.90, 93.72]], lastReport: new Date(Date.now() - 60 * 60000).toISOString() },
+      { id: 'r6', name: 'NH-415 Itanagar Papum Pare Pass', status: 'operational', district: 'Papum Pare', riskLevel: 'low', coordinates: [[27.10, 93.62], [27.05, 93.45]], lastReport: new Date(Date.now() - 180 * 60000).toISOString() },
+      { id: 'r7', name: 'NH-102 Imphal-Moreh Highway', status: 'damaged', district: 'Imphal West', riskLevel: 'high', coordinates: [[24.81, 93.93], [24.25, 94.30]], lastReport: new Date(Date.now() - 45 * 60000).toISOString() },
+      { id: 'r8', name: 'NH-54 Aizawl-Lunglei Highway', status: 'operational', district: 'Aizawl', riskLevel: 'moderate', coordinates: [[23.73, 92.71], [22.88, 92.73]], lastReport: new Date(Date.now() - 200 * 60000).toISOString() }
+    ];
+    await roadsCol.insertMany(defaultRoads);
+    console.log(`Seeded ${defaultRoads.length} default roads`);
+  }
+
+  // 2. Seed Shelters & Evacuation Centers
+  const sheltersCol = db.collection('shelters');
+  if (await sheltersCol.countDocuments() === 0) {
+    const defaultShelters = [
+      { id: 's1', name: 'Shillong Municipal Evacuation Center', type: 'evacuation_center', district: 'East Khasi Hills', state: 'Meghalaya', capacity: 1200, currentOccupancy: 340, status: 'open', location: { lat: 25.578, lng: 91.893, district: 'East Khasi Hills', state: 'Meghalaya' }, contactNumber: '+91-364-2224000', facilities: ['First Aid', 'Clean Water', 'Emergency Ration', 'Generator'] },
+      { id: 's2', name: 'Sohra Relief Assembly Point', type: 'shelter', district: 'East Khasi Hills', state: 'Meghalaya', capacity: 650, currentOccupancy: 180, status: 'open', location: { lat: 25.295, lng: 91.722, district: 'East Khasi Hills', state: 'Meghalaya' }, contactNumber: '+91-364-2538000', facilities: ['Bedding', 'Medical Station', 'Satellite Phone'] },
+      { id: 's3', name: 'Guwahati Central Indoor Relief Hub', type: 'evacuation_center', district: 'Kamrup Metropolitan', state: 'Assam', capacity: 2500, currentOccupancy: 820, status: 'open', location: { lat: 26.144, lng: 91.736, district: 'Kamrup Metropolitan', state: 'Assam' }, contactNumber: '+91-361-2237000', facilities: ['Food Kitchen', 'ICU Ambulances', 'Children Ward'] },
+      { id: 's4', name: 'Gangtok Community Safe Haven', type: 'shelter', district: 'Gangtok', state: 'Sikkim', capacity: 800, currentOccupancy: 210, status: 'open', location: { lat: 27.329, lng: 88.613, district: 'Gangtok', state: 'Sikkim' }, contactNumber: '+91-3592-202000', facilities: ['Blankets', 'Hot Meals', 'Rescue Gear'] },
+      { id: 's5', name: 'Kohima High Ground Safe Point', type: 'assembly_point', district: 'Kohima', state: 'Nagaland', capacity: 500, currentOccupancy: 90, status: 'open', location: { lat: 25.674, lng: 94.110, district: 'Kohima', state: 'Nagaland' }, contactNumber: '+91-370-2220000', facilities: ['Water Tank', 'Radio Dispatch'] }
+    ];
+    await sheltersCol.insertMany(defaultShelters);
+    console.log(`Seeded ${defaultShelters.length} default emergency shelters`);
+  }
+
+  // 3. Seed Hospitals
+  const hospitalsCol = db.collection('hospitals');
+  if (await hospitalsCol.countDocuments() === 0) {
+    const defaultHospitals = [
+      { id: 'h1', name: 'NEIGRIHMS Multi-Speciality Hospital', type: 'hospital', district: 'East Khasi Hills', state: 'Meghalaya', bedCapacity: 550, availableICUBeds: 24, emergencyServices: true, status: 'operational', location: { lat: 25.589, lng: 91.932, district: 'East Khasi Hills', state: 'Meghalaya' }, contactNumber: '+91-364-2538025' },
+      { id: 'h2', name: 'Shillong Civil Hospital', type: 'hospital', district: 'East Khasi Hills', state: 'Meghalaya', bedCapacity: 320, availableICUBeds: 8, emergencyServices: true, status: 'operational', location: { lat: 25.568, lng: 91.884, district: 'East Khasi Hills', state: 'Meghalaya' }, contactNumber: '+91-364-2226381' },
+      { id: 'h3', name: 'Guwahati Medical College & Hospital (GMCH)', type: 'hospital', district: 'Kamrup Metropolitan', state: 'Assam', bedCapacity: 1400, availableICUBeds: 62, emergencyServices: true, status: 'operational', location: { lat: 26.152, lng: 91.778, district: 'Kamrup Metropolitan', state: 'Assam' }, contactNumber: '+91-361-2529457' },
+      { id: 'h4', name: 'Gangtok STNM Multi-Speciality Hospital', type: 'hospital', district: 'Gangtok', state: 'Sikkim', bedCapacity: 450, availableICUBeds: 18, emergencyServices: true, status: 'operational', location: { lat: 27.318, lng: 88.601, district: 'Gangtok', state: 'Sikkim' }, contactNumber: '+91-3592-202944' },
+      { id: 'h5', name: 'Naga Hospital Authority Kohima', type: 'hospital', district: 'Kohima', state: 'Nagaland', bedCapacity: 300, availableICUBeds: 12, emergencyServices: true, status: 'operational', location: { lat: 25.669, lng: 94.104, district: 'Kohima', state: 'Nagaland' }, contactNumber: '+91-370-2222916' }
+    ];
+    await hospitalsCol.insertMany(defaultHospitals);
+    console.log(`Seeded ${defaultHospitals.length} default hospitals`);
+  }
+
+  // 4. Seed Evacuation Routes
+  const evacRoutesCol = db.collection('evacuationRoutes');
+  if (await evacRoutesCol.countDocuments() === 0) {
+    const defaultEvacRoutes = [
+      {
+        id: 'er1',
+        title: 'Shillong to NEIGRIHMS Safe Relief Route',
+        originName: 'Shillong City Center',
+        destinationName: 'NEIGRIHMS Hospital',
+        district: 'East Khasi Hills',
+        coordinates: [[91.884, 25.568], [91.900, 25.575], [91.932, 25.589]],
+        distanceKm: 11.4,
+        estHours: 0.35,
+        status: 'published',
+        createdBy: 'Admin Authority',
+        createdAt: new Date(Date.now() - 24 * 3600000).toISOString(),
+        updatedAt: new Date(Date.now() - 2 * 3600000).toISOString(),
+        safetyRating: 'RECOMMENDED',
+        warnings: ['✓ Verified clear by Field Patrol', 'ℹ️ Use Upper Shillong bypass']
+      }
+    ];
+    await evacRoutesCol.insertMany(defaultEvacRoutes);
+    console.log(`Seeded ${defaultEvacRoutes.length} default official evacuation routes`);
   }
 }
 
@@ -55,6 +126,7 @@ async function init() {
   try {
     await connectMongo(MONGO_URL);
     await seedDefaultRiskZones();
+    await seedDefaultEvacuationData();
   } catch (e) {
     console.warn('Backend initialized with fallback:', e.message);
   }
@@ -558,6 +630,247 @@ app.post('/api/inspect-media', optionalAuthMiddleware, async (req, res) => {
       processedAt: new Date().toISOString(),
       summaryMessage: 'AI screening is temporarily unavailable. Your report has been submitted for manual verification.'
     });
+  }
+});
+
+// ====================================================
+// Shared Evacuation Routing & Map Infrastructure APIs
+// ====================================================
+
+// 1. OpenRouteService Directions Proxy
+app.post('/api/routes/directions', optionalAuthMiddleware, async (req, res) => {
+  try {
+    const { start, end } = req.body || {};
+    if (!start || !end) return res.status(400).json({ error: 'Missing start or end location coordinates' });
+
+    const routeData = await calculateDirections(start, end);
+    res.json({ success: true, ...routeData });
+  } catch (err) {
+    appendLog('directions-error', { err: err.message });
+    res.status(500).json({ error: 'Route service is temporarily unavailable.', message: err.message });
+  }
+});
+
+// 2. Route Safety Evaluation API
+app.post('/api/routes/evaluate-safety', optionalAuthMiddleware, async (req, res) => {
+  try {
+    const { route } = req.body || {};
+    if (!route || !route.geometry) return res.status(400).json({ error: 'Missing route geometry' });
+
+    const roads = (await getDb().collection('roads').find().toArray()) || [];
+    const incidents = (await getDb().collection('reports').find().toArray()) || [];
+    const riskZones = await getRiskZonesData();
+
+    const evaluation = evaluateRouteSafety(route, roads, incidents, riskZones);
+    res.json({ success: true, ...evaluation });
+  } catch (err) {
+    appendLog('evaluate-safety-error', { err: err.message });
+    res.status(500).json({ error: 'Safety evaluation failed', message: err.message });
+  }
+});
+
+// 3. Alternative Routes Ranking API
+app.post('/api/routes/alternatives', optionalAuthMiddleware, async (req, res) => {
+  try {
+    const { start, end } = req.body || {};
+    if (!start || !end) return res.status(400).json({ error: 'Missing start or end coordinates' });
+
+    const primaryRoute = await calculateDirections(start, end);
+    const roads = (await getDb().collection('roads').find().toArray()) || [];
+    const incidents = (await getDb().collection('reports').find().toArray()) || [];
+    const riskZones = await getRiskZonesData();
+
+    const alternatives = rankAlternativeRoutes(primaryRoute, roads, incidents, riskZones);
+    res.json({ success: true, count: alternatives.length, routes: alternatives });
+  } catch (err) {
+    res.status(500).json({ error: 'Alternative route calculation failed', message: err.message });
+  }
+});
+
+// 4. Roads Database API
+app.get('/api/roads', optionalAuthMiddleware, async (req, res) => {
+  try {
+    const roads = (await getDb().collection('roads').find().toArray()) || [];
+    res.json(roads);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch roads' });
+  }
+});
+
+// Admin update road status
+app.patch('/api/roads/:id', authMiddleware, requireRole('authority', 'super_admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, riskLevel } = req.body || {};
+    if (!['operational', 'vulnerable', 'blocked', 'damaged'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid road status' });
+    }
+
+    const update = { $set: { status, updatedAt: new Date().toISOString(), updatedBy: req.user.name } };
+    if (riskLevel) update.$set.riskLevel = riskLevel;
+
+    const r = await getDb().collection('roads').findOneAndUpdate({ id }, update, { returnDocument: 'after' });
+    if (!r.value) return res.status(404).json({ error: 'Road not found' });
+
+    // Notify all active clients via SSE
+    const clients = await getDb().collection('users').find({}).toArray();
+    clients.forEach((u) => sendSse(u.id || u._id, 'road_update', r.value));
+
+    res.json(r.value);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update road status' });
+  }
+});
+
+// 5. Road Blockages API
+app.get('/api/road-blockages', optionalAuthMiddleware, async (req, res) => {
+  try {
+    const blocked = (await getDb().collection('roads').find({ status: { $in: ['blocked', 'damaged'] } }).toArray()) || [];
+    res.json(blocked);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch road blockages' });
+  }
+});
+
+// 6. Nearby Emergency Incidents API
+app.get('/api/incidents/nearby', optionalAuthMiddleware, async (req, res) => {
+  try {
+    const reports = (await getDb().collection('reports').find().toArray()) || [];
+    res.json(reports);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch incidents' });
+  }
+});
+
+// 7. Shelters & Evacuation Centers API
+app.get('/api/shelters', optionalAuthMiddleware, async (req, res) => {
+  try {
+    const shelters = (await getDb().collection('shelters').find().toArray()) || [];
+    res.json(shelters);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch shelters' });
+  }
+});
+
+app.get('/api/shelters/nearby', optionalAuthMiddleware, async (req, res) => {
+  try {
+    const shelters = (await getDb().collection('shelters').find({ status: 'open' }).toArray()) || [];
+    res.json(shelters);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch nearby shelters' });
+  }
+});
+
+// 8. Hospitals API
+app.get('/api/hospitals', optionalAuthMiddleware, async (req, res) => {
+  try {
+    const hospitals = (await getDb().collection('hospitals').find().toArray()) || [];
+    res.json(hospitals);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch hospitals' });
+  }
+});
+
+app.get('/api/hospitals/nearby', optionalAuthMiddleware, async (req, res) => {
+  try {
+    const hospitals = (await getDb().collection('hospitals').find().toArray()) || [];
+    res.json(hospitals);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch nearby hospitals' });
+  }
+});
+
+// 9. Evacuation Routes Management API
+app.get('/api/evacuation-routes', optionalAuthMiddleware, async (req, res) => {
+  try {
+    const routes = (await getDb().collection('evacuationRoutes').find({ status: 'published' }).toArray()) || [];
+    res.json(routes);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch evacuation routes' });
+  }
+});
+
+// Admin Publish Evacuation Route
+app.post('/api/evacuation-routes', authMiddleware, requireRole('authority', 'super_admin'), async (req, res) => {
+  try {
+    const { title, originName, destinationName, district, coordinates, distanceKm, estHours, warnings } = req.body || {};
+    if (!title || !originName || !destinationName) return res.status(400).json({ error: 'Missing route parameters' });
+
+    const newRoute = {
+      id: nanoid(),
+      title,
+      originName,
+      destinationName,
+      district: district || 'East Khasi Hills',
+      coordinates: coordinates || [],
+      distanceKm: Number(distanceKm) || 12.0,
+      estHours: Number(estHours) || 0.4,
+      status: 'published',
+      createdBy: req.user.name,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      safetyRating: 'RECOMMENDED',
+      warnings: warnings || ['✓ Verified safe by Emergency Operations Command'],
+    };
+
+    await getDb().collection('evacuationRoutes').insertOne(newRoute);
+
+    // Broadcast SSE update
+    const users = await getDb().collection('users').find({}).toArray();
+    users.forEach((u) => sendSse(u.id || u._id, 'evacuation_route_published', newRoute));
+
+    res.json(newRoute);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to publish evacuation route' });
+  }
+});
+
+// Admin Suspend Evacuation Route
+app.patch('/api/evacuation-routes/:id/suspend', authMiddleware, requireRole('authority', 'super_admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const r = await getDb().collection('evacuationRoutes').findOneAndUpdate({ id }, { $set: { status: 'suspended', updatedAt: new Date().toISOString() } }, { returnDocument: 'after' });
+    if (!r.value) return res.status(404).json({ error: 'Route not found' });
+    res.json(r.value);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to suspend route' });
+  }
+});
+
+// 10. Live Map State Updates API
+app.get('/api/map/updates', optionalAuthMiddleware, async (req, res) => {
+  try {
+    const db = getDb();
+    const roads = await db.collection('roads').find().toArray();
+    const blockages = await db.collection('roads').find({ status: { $in: ['blocked', 'damaged'] } }).toArray();
+    const incidents = await db.collection('reports').find().toArray();
+    const riskZones = await getRiskZonesData();
+    const shelters = await db.collection('shelters').find({ status: 'open' }).toArray();
+    const hospitals = await db.collection('hospitals').find().toArray();
+    const evacuationRoutes = await db.collection('evacuationRoutes').find({ status: 'published' }).toArray();
+
+    res.json({
+      timestamp: new Date().toISOString(),
+      liveUpdatesEnabled: true,
+      counts: {
+        roads: roads.length,
+        blockages: blockages.length,
+        incidents: incidents.length,
+        riskZones: riskZones.length,
+        shelters: shelters.length,
+        hospitals: hospitals.length,
+        evacuationRoutes: evacuationRoutes.length,
+      },
+      roads,
+      blockages,
+      incidents,
+      riskZones,
+      shelters,
+      hospitals,
+      evacuationRoutes,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch map updates' });
   }
 });
 

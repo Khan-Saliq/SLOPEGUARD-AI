@@ -8,9 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import {
-  applyRiskToZone,
   computeActionPriority,
-  jitter,
   recalcDistricts,
   severityToScore,
 } from '../lib/riskEngine';
@@ -19,11 +17,15 @@ import type {
   CitizenReport,
   DistrictSummary,
   EmergencyTask,
+  EvacuationRoute,
+  Hospital,
   Notification,
   ProblemCategory,
   RiskLevel,
   RiskZone,
   Road,
+  RoadStatus,
+  Shelter,
   Village,
   WeatherData,
 } from '../types';
@@ -342,6 +344,201 @@ export const INITIAL_CITIZEN_REPORTS: CitizenReport[] = [
   },
 ];
 
+export const INITIAL_INDIA_ROADS: Road[] = [
+  {
+    id: 'road-sh29',
+    name: 'SH-29 Wayanad Ghat Road',
+    district: 'Wayanad',
+    status: 'blocked',
+    riskLevel: 'critical',
+    lastReport: 'Chooralmala debris slide blocked both lanes',
+    coordinates: [
+      [11.65, 76.10],
+      [11.68, 76.13],
+      [11.72, 76.16],
+    ],
+  },
+  {
+    id: 'road-nh107',
+    name: 'NH-107 Gaurikund Highway',
+    district: 'Rudraprayag',
+    status: 'damaged',
+    riskLevel: 'critical',
+    lastReport: 'Fissure along edge lane near Sonprayag',
+    coordinates: [
+      [30.68, 79.02],
+      [30.73, 79.06],
+      [30.77, 79.09],
+    ],
+  },
+  {
+    id: 'road-sh5',
+    name: 'SH-5 Shillong-Sohra Highway',
+    district: 'East Khasi Hills',
+    status: 'vulnerable',
+    riskLevel: 'high',
+    lastReport: 'Water seepage and falling gravel on hairpin curve',
+    coordinates: [
+      [25.50, 91.85],
+      [25.38, 91.78],
+      [25.27, 91.73],
+    ],
+  },
+  {
+    id: 'road-nh5',
+    name: 'NH-05 Shimla Kinnaur Highway',
+    district: 'Shimla',
+    status: 'vulnerable',
+    riskLevel: 'critical',
+    lastReport: 'Rockfall hazard active at Taradevi cut',
+    coordinates: [
+      [31.05, 77.12],
+      [31.10, 77.17],
+      [31.15, 77.22],
+    ],
+  },
+  {
+    id: 'road-nh31a',
+    name: 'NH-31A Gangtok Corridor',
+    district: 'Gangtok',
+    status: 'operational',
+    riskLevel: 'moderate',
+    lastReport: 'Clear - regular monitoring',
+    coordinates: [
+      [27.28, 88.58],
+      [27.33, 88.61],
+      [27.38, 88.65],
+    ],
+  },
+];
+
+export const INITIAL_INDIA_SHELTERS: Shelter[] = [
+  {
+    id: 'sh-1',
+    name: 'Wayanad Central Relief Camp',
+    type: 'evacuation_center',
+    district: 'Wayanad',
+    state: 'Kerala',
+    capacity: 500,
+    currentOccupancy: 185,
+    status: 'open',
+    location: { lat: 11.65, lng: 76.14, area: 'Meppadi Town Center', district: 'Wayanad', state: 'Kerala' },
+    contactNumber: '+91 4936 202100',
+    facilities: ['Emergency Power', 'Clean Water', 'Medical First Aid', 'Food Supplies'],
+  },
+  {
+    id: 'sh-2',
+    name: 'Gaurikund Emergency Transit Hub',
+    type: 'assembly_point',
+    district: 'Rudraprayag',
+    state: 'Uttarakhand',
+    capacity: 350,
+    currentOccupancy: 120,
+    status: 'open',
+    location: { lat: 30.65, lng: 79.03, area: 'Sonprayag Helipad Complex', district: 'Rudraprayag', state: 'Uttarakhand' },
+    contactNumber: '+91 1364 233112',
+    facilities: ['Thermal Blankets', 'Oxygen Support', 'Satellite Phone Link'],
+  },
+  {
+    id: 'sh-3',
+    name: 'Sohra Community Evacuation Refuge',
+    type: 'shelter',
+    district: 'East Khasi Hills',
+    state: 'Meghalaya',
+    capacity: 400,
+    currentOccupancy: 90,
+    status: 'open',
+    location: { lat: 25.30, lng: 91.75, area: 'Sohra Higher Secondary Campus', district: 'East Khasi Hills', state: 'Meghalaya' },
+    contactNumber: '+91 364 2223400',
+    facilities: ['Dry Ration Packs', 'Dormitory Sleeping Pads', 'Emergency Wireless'],
+  },
+];
+
+export const INITIAL_INDIA_HOSPITALS: Hospital[] = [
+  {
+    id: 'hosp-1',
+    name: 'Meppadi District Emergency Hospital',
+    type: 'hospital',
+    district: 'Wayanad',
+    state: 'Kerala',
+    bedCapacity: 150,
+    availableICUBeds: 18,
+    emergencyServices: true,
+    status: 'operational',
+    location: { lat: 11.66, lng: 76.12, area: 'Meppadi Bypass', district: 'Wayanad', state: 'Kerala' },
+    contactNumber: '+91 4936 204555',
+  },
+  {
+    id: 'hosp-2',
+    name: 'Rudraprayag Civil Hospital',
+    type: 'hospital',
+    district: 'Rudraprayag',
+    state: 'Uttarakhand',
+    bedCapacity: 90,
+    availableICUBeds: 8,
+    emergencyServices: true,
+    status: 'operational',
+    location: { lat: 30.62, lng: 78.98, area: 'Rudraprayag Main Road', district: 'Rudraprayag', state: 'Uttarakhand' },
+    contactNumber: '+91 1364 233201',
+  },
+  {
+    id: 'hosp-3',
+    name: 'Shillong Civil Medical Center',
+    type: 'hospital',
+    district: 'East Khasi Hills',
+    state: 'Meghalaya',
+    bedCapacity: 280,
+    availableICUBeds: 34,
+    emergencyServices: true,
+    status: 'operational',
+    location: { lat: 25.57, lng: 91.88, area: 'Laban Hill', district: 'East Khasi Hills', state: 'Meghalaya' },
+    contactNumber: '+91 364 2226341',
+  },
+];
+
+export const INITIAL_INDIA_EVACUATION_ROUTES: EvacuationRoute[] = [
+  {
+    id: 'er-1',
+    title: 'Wayanad Ghat Evacuation Corridor A',
+    originName: 'Chooralmala Slope Danger Zone',
+    destinationName: 'Meppadi Central Shelter',
+    district: 'Wayanad',
+    coordinates: [
+      [11.68, 76.13],
+      [11.67, 76.135],
+      [11.65, 76.14],
+    ],
+    distanceKm: 4.8,
+    estHours: 0.25,
+    status: 'published',
+    createdBy: 'Wayanad Emergency Command',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    safetyRating: 'CAUTION',
+    warnings: ['Drive slowly near river crossing', 'Bypass single-lane debris area'],
+  },
+  {
+    id: 'er-2',
+    title: 'Kedarnath Valley North Refuge Route',
+    originName: 'Gaurikund Cut',
+    destinationName: 'Sonprayag Helipad Transit Camp',
+    district: 'Rudraprayag',
+    coordinates: [
+      [30.73, 79.06],
+      [30.70, 79.04],
+      [30.65, 79.03],
+    ],
+    distanceKm: 11.2,
+    estHours: 0.45,
+    status: 'published',
+    createdBy: 'Rudraprayag Disaster Cell',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    safetyRating: 'CAUTION',
+    warnings: ['Active fissure on right shoulder at KM 4.2', 'Controlled one-way traffic'],
+  },
+];
+
 interface RiskTrendPoint {
   hour: string;
   critical: number;
@@ -367,6 +564,9 @@ interface MonitorDataContextType {
   riskZones: RiskZone[];
   alerts: Alert[];
   roads: Road[];
+  shelters: Shelter[];
+  hospitals: Hospital[];
+  evacuationRoutes: EvacuationRoute[];
   villages: Village[];
   citizenReports: CitizenReport[];
   emergencyTasks: EmergencyTask[];
@@ -379,35 +579,21 @@ interface MonitorDataContextType {
   pendingSyncCount: number;
   isLoading: boolean;
   refreshRiskZones: () => Promise<void>;
+  refreshRoads: () => Promise<void>;
+  refreshShelters: () => Promise<void>;
+  refreshHospitals: () => Promise<void>;
+  refreshEvacuationRoutes: () => Promise<void>;
   acknowledgeAlert: (id: string) => void;
   submitReport: (input: SubmitReportInput) => CitizenReport | Promise<any> | null;
   syncPendingReports: () => number;
   assignTask: (id: string, team: string) => void;
   updateTaskStatus: (id: string, status: EmergencyTask['status']) => void;
+  updateRoadStatus: (roadId: string, status: RoadStatus, reason?: string) => Promise<void>;
+  publishEvacuationRoute: (route: Partial<EvacuationRoute>) => Promise<EvacuationRoute | null>;
+  suspendEvacuationRoute: (routeId: string) => Promise<void>;
 }
 
 const MonitorDataContext = createContext<MonitorDataContextType | null>(null);
-
-function maybeEscalateAlert(prev: Alert[], zones: RiskZone[]): Alert[] {
-  const critical = zones.find(z => z.riskLevel === 'critical' && z.riskScore > 90);
-  if (!critical || Math.random() > 0.15) return prev;
-  if (prev.some(a => a.location.lat === critical.location.lat && !a.acknowledged)) return prev;
-
-  const alert: Alert = {
-    id: `a-live-${Date.now()}`,
-    title: `Live Escalation — ${critical.name}`,
-    message: `Risk score rose to ${critical.riskScore}. Sensor + rainfall convergence detected. Immediate review required.`,
-    riskLevel: 'critical',
-    district: critical.location.district,
-    location: critical.location,
-    timestamp: new Date().toISOString(),
-    acknowledged: false,
-    dataSource: 'sensor',
-    affectedRoads: [],
-    affectedVillages: [],
-  };
-  return [alert, ...prev].slice(0, 12);
-}
 
 export const INITIAL_RISK_TREND: RiskTrendPoint[] = Array.from({ length: 12 }, (_, i) => {
   const h = (new Date().getHours() - (11 - i) * 2 + 24) % 24;
@@ -434,12 +620,15 @@ export const INITIAL_WEATHER_HISTORY: WeatherData[] = Array.from({ length: 12 },
 export function MonitorDataProvider({ children }: { children: ReactNode }) {
   const [riskZones, setRiskZones] = useState<RiskZone[]>(INITIAL_INDIA_RISK_ZONES);
   const [alerts, setAlerts] = useState<Alert[]>(INITIAL_INDIA_ALERTS);
-  const [roads] = useState<Road[]>([]);
+  const [roads, setRoads] = useState<Road[]>(INITIAL_INDIA_ROADS);
+  const [shelters, setShelters] = useState<Shelter[]>(INITIAL_INDIA_SHELTERS);
+  const [hospitals, setHospitals] = useState<Hospital[]>(INITIAL_INDIA_HOSPITALS);
+  const [evacuationRoutes, setEvacuationRoutes] = useState<EvacuationRoute[]>(INITIAL_INDIA_EVACUATION_ROUTES);
   const [villages] = useState<Village[]>([]);
   const [citizenReports, setCitizenReports] = useState<CitizenReport[]>(INITIAL_CITIZEN_REPORTS);
   const [emergencyTasks, setEmergencyTasks] = useState<EmergencyTask[]>([]);
-  const [weatherHistory, setWeatherHistory] = useState<WeatherData[]>(INITIAL_WEATHER_HISTORY);
-  const [riskTrend, setRiskTrend] = useState<RiskTrendPoint[]>(INITIAL_RISK_TREND);
+  const [weatherHistory] = useState<WeatherData[]>(INITIAL_WEATHER_HISTORY);
+  const [riskTrend] = useState<RiskTrendPoint[]>(INITIAL_RISK_TREND);
   const [notifications] = useState<Notification[]>([]);
   const [lastUpdated, setLastUpdated] = useState(() => new Date());
   const [tickCount, setTickCount] = useState(0);
@@ -450,20 +639,71 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
   const districts = useMemo(() => recalcDistricts(riskZones, []), [riskZones]);
   const { token, user } = useApp();
 
+  const refreshRoads = useCallback(async () => {
+    try {
+      const r = await fetch('/api/roads');
+      if (r.ok) {
+        const data = await r.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setRoads(data);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch roads:', err);
+    }
+  }, []);
+
+  const refreshShelters = useCallback(async () => {
+    try {
+      const r = await fetch('/api/shelters');
+      if (r.ok) {
+        const data = await r.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setShelters(data);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch shelters:', err);
+    }
+  }, []);
+
+  const refreshHospitals = useCallback(async () => {
+    try {
+      const r = await fetch('/api/hospitals');
+      if (r.ok) {
+        const data = await r.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setHospitals(data);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch hospitals:', err);
+    }
+  }, []);
+
+  const refreshEvacuationRoutes = useCallback(async () => {
+    try {
+      const r = await fetch('/api/evacuation-routes');
+      if (r.ok) {
+        const data = await r.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setEvacuationRoutes(data);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch evacuation routes:', err);
+    }
+  }, []);
+
   // Refresh risk zones with real environmental data and ML predictions
   const refreshRiskZones = useCallback(async () => {
     if (!token || !user || !['authority', 'super_admin'].includes(user.role)) return;
     setIsLoading(true);
     try {
       const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-      const response = await fetch('/api/risk-zones/refresh', {
-        method: 'POST',
-        headers
-      });
+      const response = await fetch('/api/risk-zones/refresh', { method: 'POST', headers });
 
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => null);
-        console.warn('Failed to refresh risk zones:', response.status, errorBody?.error || response.statusText);
         setIsLoading(false);
         return;
       }
@@ -471,26 +711,10 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
       const result = await response.json();
       if (result.zones && Array.isArray(result.zones)) {
         setRiskZones(result.zones);
-
-        // Update alerts if new ones were created
         if (result.alerts && Array.isArray(result.alerts) && result.alerts.length > 0) {
           setAlerts(prev => [...result.alerts, ...prev]);
         }
-
-        // Update risk trend
-        const counts = { critical: 0, high: 0, moderate: 0, low: 0 };
-        result.zones.forEach((z: RiskZone) => { counts[z.riskLevel]++; });
-
-        setRiskTrend(rt => [
-          ...rt.slice(-23),
-          {
-            hour: `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`,
-            ...counts,
-          },
-        ]);
-
         setLastUpdated(new Date());
-        console.log('✓ Risk zones refreshed with real data:', result.updated, 'zones updated');
       }
     } catch (error) {
       console.error('Error refreshing risk zones:', error);
@@ -500,92 +724,107 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
   }, [token, user]);
 
   useEffect(() => {
-    if (!token) return;
-    const headers = { Authorization: `Bearer ${token}` };
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
-    // Initial fetch of risk zones, alerts, and reports
     fetch('/api/risk-zones', { headers })
       .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) setRiskZones(data);
-      })
+      .then(data => { if (Array.isArray(data) && data.length) setRiskZones(data); })
       .catch(() => {});
 
     fetch('/api/alerts', { headers })
       .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) setAlerts(data);
-      })
+      .then(data => { if (Array.isArray(data) && data.length) setAlerts(data); })
       .catch(() => {});
 
     fetch('/api/reports', { headers })
       .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) setCitizenReports(data);
-      })
+      .then(data => { if (Array.isArray(data) && data.length) setCitizenReports(data); })
       .catch(() => {});
 
-    // Refresh with real data immediately
-    if (['authority', 'super_admin'].includes(user?.role || '')) refreshRiskZones();
-  }, [token, user, refreshRiskZones]);
+    refreshRoads();
+    refreshShelters();
+    refreshHospitals();
+    refreshEvacuationRoutes();
 
-  const liveTick = useCallback(() => {
-    // For demo/simulation mode: jitter environmental data
-    // In production, this should be replaced with periodic API calls
-    const USE_SIMULATION = false; // Set to false to use real API refresh
+    if (token && ['authority', 'super_admin'].includes(user?.role || '')) {
+      refreshRiskZones();
+    }
+  }, [token, user, refreshRiskZones, refreshRoads, refreshShelters, refreshHospitals, refreshEvacuationRoutes]);
 
-    if (USE_SIMULATION) {
-      setRiskZones(prev => {
-        const updated = prev.map(zone => {
-          const rainfall = Math.round(jitter(zone.rainfall, 8, 20, 220));
-          const soilMoisture = Math.round(jitter(zone.soilMoisture, 4, 25, 95));
-          const satelliteIndicator = Math.round(jitter(zone.satelliteIndicator, 3, 10, 95));
-          return applyRiskToZone({ ...zone, rainfall, soilMoisture, satelliteIndicator });
+  const updateRoadStatus = useCallback(async (roadId: string, status: RoadStatus, reason?: string) => {
+    // Optimistic local state update
+    setRoads(prev => prev.map(rd => rd.id === roadId ? { ...rd, status, lastReport: reason || rd.lastReport } : rd));
+
+    if (token) {
+      try {
+        await fetch(`/api/roads/${roadId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ status, reason }),
         });
-
-        const counts = { critical: 0, high: 0, moderate: 0, low: 0 };
-        updated.forEach(z => { counts[z.riskLevel]++; });
-
-        setRiskTrend(rt => [
-          ...rt.slice(-23),
-          {
-            hour: `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`,
-            ...counts,
-          },
-        ]);
-        setAlerts(a => maybeEscalateAlert(a, updated));
-
-        return updated;
-      });
-
-      setWeatherHistory(prev => {
-        const defaultLast: WeatherData = {
-          date: new Date().toISOString().split('T')[0],
-          rainfall: 150,
-          soilMoisture: 75,
-          temperature: 22,
-          humidity: 85,
-        };
-        const last = prev && prev.length ? prev[prev.length - 1] : defaultLast;
-        const next: WeatherData = {
-          date: new Date().toISOString().split('T')[0],
-          rainfall: Math.round(jitter(last.rainfall ?? defaultLast.rainfall, 12, 15, 220)),
-          soilMoisture: Math.round(jitter(last.soilMoisture ?? defaultLast.soilMoisture, 5, 25, 95)),
-          temperature: Math.round(jitter(last.temperature ?? defaultLast.temperature, 1.5, 14, 32)),
-          humidity: Math.round(jitter(last.humidity ?? defaultLast.humidity, 4, 55, 98)),
-        };
-        return [...(prev || []).slice(-13), next];
-      });
-    } else {
-      // Real mode: refresh from API periodically (every 5 minutes)
-      if (token && ['authority', 'super_admin'].includes(user?.role || '') && tickCount % 50 === 0) { // Every ~5 minutes at 6s interval
-        refreshRiskZones();
+      } catch (err) {
+        console.error('Failed to sync road status update:', err);
       }
     }
+  }, [token]);
 
+  const publishEvacuationRoute = useCallback(async (routeInput: Partial<EvacuationRoute>): Promise<EvacuationRoute | null> => {
+    const newRoute: EvacuationRoute = {
+      id: routeInput.id || `er-${Date.now()}`,
+      title: routeInput.title || 'Official Evacuation Route',
+      originName: routeInput.originName || 'Origin Area',
+      destinationName: routeInput.destinationName || 'Evacuation Destination',
+      district: routeInput.district || 'General',
+      coordinates: routeInput.coordinates || [],
+      distanceKm: routeInput.distanceKm || 0,
+      estHours: routeInput.estHours || 0,
+      status: 'published',
+      createdBy: user?.name || 'Emergency Admin',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      safetyRating: routeInput.safetyRating || 'RECOMMENDED',
+      warnings: routeInput.warnings || [],
+    };
+
+    setEvacuationRoutes(prev => [newRoute, ...prev]);
+
+    if (token) {
+      try {
+        const res = await fetch('/api/evacuation-routes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(newRoute),
+        });
+        if (res.ok) {
+          const created = await res.json();
+          return created;
+        }
+      } catch (err) {
+        console.error('Failed to persist published evacuation route:', err);
+      }
+    }
+    return newRoute;
+  }, [token, user]);
+
+  const suspendEvacuationRoute = useCallback(async (routeId: string) => {
+    setEvacuationRoutes(prev => prev.map(r => r.id === routeId ? { ...r, status: 'suspended' as const } : r));
+
+    if (token) {
+      try {
+        await fetch(`/api/evacuation-routes/${routeId}/suspend`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch (err) {
+        console.error('Failed to suspend evacuation route:', err);
+      }
+    }
+  }, [token]);
+
+  const liveTick = useCallback(() => {
     setLastUpdated(new Date());
     setTickCount(c => c + 1);
-  }, [token, user, tickCount, refreshRiskZones]);
+  }, []);
 
   useEffect(() => {
     const id = setInterval(liveTick, 6000);
@@ -649,6 +888,9 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
       riskZones,
       alerts,
       roads,
+      shelters,
+      hospitals,
+      evacuationRoutes,
       villages,
       citizenReports,
       emergencyTasks,
@@ -661,16 +903,26 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
       pendingSyncCount,
       isLoading,
       refreshRiskZones,
+      refreshRoads,
+      refreshShelters,
+      refreshHospitals,
+      refreshEvacuationRoutes,
       acknowledgeAlert,
       submitReport,
       syncPendingReports,
       assignTask,
       updateTaskStatus,
+      updateRoadStatus,
+      publishEvacuationRoute,
+      suspendEvacuationRoute,
     }),
     [
       riskZones,
       alerts,
       roads,
+      shelters,
+      hospitals,
+      evacuationRoutes,
       villages,
       citizenReports,
       emergencyTasks,
@@ -683,11 +935,18 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
       pendingSyncCount,
       isLoading,
       refreshRiskZones,
+      refreshRoads,
+      refreshShelters,
+      refreshHospitals,
+      refreshEvacuationRoutes,
       acknowledgeAlert,
       submitReport,
       syncPendingReports,
       assignTask,
       updateTaskStatus,
+      updateRoadStatus,
+      publishEvacuationRoute,
+      suspendEvacuationRoute,
     ],
   );
 

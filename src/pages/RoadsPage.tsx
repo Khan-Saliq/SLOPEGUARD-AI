@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useMonitorData } from '../hooks/useMonitorData';
-import { GISMap } from '../components/map/GISMap';
+import { SharedEvacuationMap } from '../components/map/SharedEvacuationMap';
 import { SafeRouteCalculator } from '../components/map/SafeRouteCalculator';
 import { EvaluatorExplanationCard, EvaluatorHeaderBanner } from '../components/ui/EvaluatorExplanationCard';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
-import { RiskBadge, StatusBadge } from '../components/ui/Badge';
+import { StatusBadge } from '../components/ui/Badge';
 import { formatRelativeTime } from '../lib/utils';
-import { Route, Users, AlertTriangle } from 'lucide-react';
+import { Route, Users, AlertTriangle, ShieldAlert } from 'lucide-react';
 
 export function RoadsPage() {
-  const { roads, villages } = useMonitorData();
+  const { roads, villages, shelters, hospitals, evacuationRoutes } = useMonitorData();
   const [showEvaluatorExplanations, setShowEvaluatorExplanations] = useState(true);
 
   const blocked = roads.filter(r => r.status === 'blocked');
@@ -22,19 +22,19 @@ export function RoadsPage() {
     <div className="space-y-6">
       {/* Top Banner with Evaluator Explanation Toggle */}
       <EvaluatorHeaderBanner
-        pageTitle="Road Connectivity & Emergency Routing"
-        description="Real-time road network connectivity monitoring, blocked highway detection, isolated village tracking, and automated safe evacuation routing."
+        pageTitle="Admin Road Connectivity & Evacuation Command Center"
+        description="Unified emergency evacuation-routing system and road status management. Monitor road network status, verify blockages, and publish official evacuation routes to citizens."
         isEvaluatorMode={showEvaluatorExplanations}
         onToggleEvaluatorMode={() => setShowEvaluatorExplanations(!showEvaluatorExplanations)}
       />
 
       {/* Connectivity Metrics Cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Blocked Roads', count: blocked.length, color: 'text-red-400', bg: 'bg-red-500/20', icon: AlertTriangle },
           { label: 'Vulnerable Roads', count: vulnerable.length, color: 'text-amber-400', bg: 'bg-amber-500/20', icon: Route },
           { label: 'Operational Routes', count: operational.length, color: 'text-green-400', bg: 'bg-green-500/20', icon: Route },
-          { label: 'Isolated Villages', count: isolated.length, color: 'text-red-400', bg: 'bg-red-500/20', icon: Users },
+          { label: 'Isolated Settlements', count: isolated.length, color: 'text-red-400', bg: 'bg-red-500/20', icon: Users },
         ].map(({ label, count, color, bg, icon: Icon }, i) => (
           <motion.div key={label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
             <Card>
@@ -44,7 +44,7 @@ export function RoadsPage() {
                 </div>
                 <div>
                   <p className={`text-2xl font-bold ${color}`}>{count}</p>
-                  <p className="text-xs text-slate-400">{label}</p>
+                  <p className="text-xs text-muted-foreground">{label}</p>
                 </div>
               </CardContent>
             </Card>
@@ -52,16 +52,16 @@ export function RoadsPage() {
         ))}
       </div>
 
-      {/* Step 3: Interactive Automated Emergency Safe Route Pathfinder Console */}
+      {/* Shared Unified Safe Route Pathfinder & Admin Control Console */}
       <div className="space-y-3">
-        <SafeRouteCalculator roads={roads} villages={villages} />
+        <SafeRouteCalculator isAdmin={true} />
         {showEvaluatorExplanations && (
           <EvaluatorExplanationCard
-            title="Automated Emergency Safe Route Pathfinder Engine"
-            purpose="Calculates safe emergency relief and evacuation routes using real road routing APIs (OpenRouteService/OSRM), analyzing hazard zones and blocked roads to identify safer alternatives for reaching isolated villages."
-            inputs="Road network routing API, GPS coordinates, blocked road locations, risk zone data, real-time distance/time calculations."
+            title="Unified Emergency Safe Route Pathfinder Engine"
+            purpose="Calculates safe emergency relief and evacuation routes using OpenRouteService with OSRM fallback, evaluating hazard zones and blocked roads to publish official evacuation corridors."
+            inputs="OpenRouteService directions proxy, GPS location search, road blockage statuses, risk zone sensor data."
             psReference="PS_26001 Section 6.8, 6.9 & 16.0"
-            evaluatorNote="Uses actual road routing services with turn-by-turn navigation. Analyzes route proximity to hazard zones and provides safety warnings. No straight-line routing - calculates real drivable paths with distance and time estimates."
+            evaluatorNote="Citizens and Admins use the exact same underlying routing engine and interactive Leaflet map. Admins are equipped with operational controls to update road statuses and publish official evacuation routes directly."
           />
         )}
       </div>
@@ -69,83 +69,82 @@ export function RoadsPage() {
       {/* GIS Spatial Road Network & Blocked Highways Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
         <div className="col-span-1 lg:col-span-7">
-          <Card className="h-[300px] sm:h-[450px]">
-            <CardHeader><CardTitle className="flex items-center gap-2"><Route className="h-4 w-4 text-accent-bright" /> GIS Spatial Road Network Map</CardTitle></CardHeader>
+          <Card className="h-[480px]">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-foreground">
+                <Route className="h-4 w-4 text-accent-bright" /> GIS Spatial Evacuation & Road Network Map
+              </CardTitle>
+            </CardHeader>
             <CardContent className="h-[calc(100%-60px)]">
-              <GISMap roads={roads} height="100%" showHeatmap={false} />
+              <SharedEvacuationMap
+                roads={roads}
+                shelters={shelters}
+                hospitals={hospitals}
+                evacuationRoutes={evacuationRoutes}
+                height="100%"
+              />
             </CardContent>
           </Card>
         </div>
 
         <div className="col-span-1 lg:col-span-5 space-y-4">
           <Card>
-            <CardHeader><CardTitle className="text-red-400 flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Active Blocked Highways</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-red-400 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" /> Active Blocked & Damaged Roads
+              </CardTitle>
+            </CardHeader>
             <CardContent>
-              <div className="space-y-2 max-h-[160px] overflow-y-auto">
-                {blocked.map(road => (
-                  <div key={road.id} className="rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-white">{road.name}</p>
-                      <StatusBadge status="blocked" />
+              <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+                {blocked.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No completely blocked roads currently reported.</p>
+                ) : (
+                  blocked.map(road => (
+                    <div key={road.id} className="rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold text-foreground">{road.name}</p>
+                        <StatusBadge status="blocked" />
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        {road.district} · {road.lastReport && formatRelativeTime(road.lastReport)}
+                      </p>
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">{road.district} · {road.lastReport && formatRelativeTime(road.lastReport)}</p>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-red-400 flex items-center gap-2"><Users className="h-4 w-4" /> Isolated Remote Settlements</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-foreground flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4 text-emerald-500" /> Published Evacuation Corridors
+              </CardTitle>
+            </CardHeader>
             <CardContent>
-              <div className="space-y-2 max-h-[160px] overflow-y-auto">
-                {isolated.map(v => (
-                  <div key={v.id} className="rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-white">{v.name}</p>
-                        <p className="text-xs text-slate-500">{v.district} · Population: {v.population}</p>
+              <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+                {evacuationRoutes.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No official evacuation routes published yet.</p>
+                ) : (
+                  evacuationRoutes.map(er => (
+                    <div key={er.id} className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-emerald-400">{er.title}</h4>
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-600 text-white uppercase">
+                          {er.status}
+                        </span>
                       </div>
-                      <StatusBadge status="isolated" />
+                      <p className="text-[11px] text-muted-foreground">
+                        {er.originName} ➔ {er.destinationName} ({er.distanceKm} km)
+                      </p>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
-
-      {/* Comprehensive Road Inventory Table */}
-      <Card>
-        <CardHeader><CardTitle>Comprehensive Regional Road Status Inventory</CardTitle></CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-700 text-left text-xs text-slate-500">
-                  <th className="pb-3 pr-4">Road Name</th>
-                  <th className="pb-3 pr-4">District</th>
-                  <th className="pb-3 pr-4">Status</th>
-                  <th className="pb-3 pr-4">Risk Level</th>
-                  <th className="pb-3">Last Report</th>
-                </tr>
-              </thead>
-              <tbody>
-                {roads.map(road => (
-                  <tr key={road.id} className="border-b border-slate-800 hover:bg-slate-800/30 transition-colors">
-                    <td className="py-3 pr-4 font-medium text-white">{road.name}</td>
-                    <td className="py-3 pr-4 text-slate-400">{road.district}</td>
-                    <td className="py-3 pr-4"><StatusBadge status={road.status} /></td>
-                    <td className="py-3 pr-4"><RiskBadge level={road.riskLevel} /></td>
-                    <td className="py-3 text-slate-500 text-xs">{road.lastReport ? formatRelativeTime(road.lastReport) : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

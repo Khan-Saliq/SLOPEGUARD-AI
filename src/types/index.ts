@@ -28,7 +28,83 @@ export type ProblemCategory =
   | 'debris'
   | 'other';
 
-export type RoadStatus = 'operational' | 'vulnerable' | 'blocked';
+export type RoadStatus = 'operational' | 'vulnerable' | 'blocked' | 'damaged';
+
+export interface Shelter {
+  id: string;
+  name: string;
+  type: 'shelter' | 'evacuation_center' | 'assembly_point';
+  district: string;
+  state: string;
+  capacity: number;
+  currentOccupancy: number;
+  status: 'open' | 'full' | 'closed';
+  location: Location;
+  contactNumber?: string;
+  facilities: string[];
+}
+
+export interface Hospital {
+  id: string;
+  name: string;
+  type: 'hospital' | 'medical_center' | 'primary_health_centre';
+  district: string;
+  state: string;
+  bedCapacity: number;
+  availableICUBeds: number;
+  emergencyServices: boolean;
+  status: 'operational' | 'busy' | 'restricted';
+  location: Location;
+  contactNumber?: string;
+}
+
+export interface EvacuationRoute {
+  id: string;
+  title: string;
+  originName: string;
+  destinationName: string;
+  district: string;
+  coordinates: [number, number][];
+  distanceKm: number;
+  estHours: number;
+  status: 'published' | 'suspended' | 'draft';
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  safetyRating: 'RECOMMENDED' | 'CAUTION' | 'WARNING';
+  warnings: string[];
+}
+
+export interface RouteSafetyResult {
+  routeStatus: 'NORMAL' | 'CAUTION' | 'WARNING' | 'BLOCKED' | 'NO_VERIFIED_SAFE_ROUTE';
+  riskCategory: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
+  distanceMeters: number;
+  distanceKm: number;
+  durationSeconds: number;
+  durationHours: number;
+  blockedRoads: string[];
+  dangerousSegments: string[];
+  nearbyIncidents: string[];
+  warnings: string[];
+  alternativeAvailable: boolean;
+  lastEvaluatedAt: string;
+}
+
+export interface AlternativeRouteOption {
+  id: string;
+  name: string;
+  distanceKm: number;
+  durationHours: number;
+  riskCategory: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
+  routeStatus: 'NORMAL' | 'CAUTION' | 'WARNING' | 'BLOCKED';
+  blockedCount: number;
+  warningCount: number;
+  summary: string;
+  geometry: [number, number][];
+  instructions?: { text: string; distance: number; duration: number; type: string }[];
+  isRecommended: boolean;
+  evaluatedAt: string;
+}
 
 export type DataSource = 'ai_prediction' | 'sensor' | 'satellite' | 'citizen_report';
 

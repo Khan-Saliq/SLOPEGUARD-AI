@@ -192,7 +192,70 @@ function analyzeRouteHazards(route: RouteResult, hazards: HazardZone[]): {
 }
 
 /**
- * Main routing function with automatic fallback and hazard analysis
+ * Calculate route via backend OpenRouteService Proxy
+ */
+async function calculateRouteBackend(
+  start: RoutePoint,
+  end: RoutePoint
+): Promise<RouteResult> {
+  const token = localStorage.getItem('token');
+  const response = await fetch('/api/routes/directions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ start, end }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Backend directions service error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  if (!data || !data.success || !Array.isArray(data.geometry)) {
+    throw new Error(data.message || 'Routing service returned no geometry');
+  }
+
+  return {
+    distance: data.distanceKm,
+    duration: data.durationHours,
+    geometry: data.geometry,
+    instructions: data.instructions || [],
+    summary: data.summaryMessage || `${data.distanceKm} km, ${data.durationHours} hours`,
+    warnings: [],
+  };
+}
+
+/**
+ * Fetch alternative ranked routes from backend
+ */
+export async function fetchAlternativeRoutes(start: RoutePoint, end: RoutePoint) {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('/api/routes/alternatives', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ start, end }),
+    });
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    if (data && data.success && Array.isArray(data.routes)) {
+      return data.routes;
+    }
+    return [];
+  } catch (e) {
+    return [];
+  }
+}
+
+/**
+ * Main routing function with backend proxy, automatic fallback, and hazard analysis
  */
 export async function calculateSafeRoute(
   start: RoutePoint,
@@ -206,20 +269,21 @@ export async function calculateSafeRoute(
   let route: RouteResult;
 
   try {
-    // Try OpenRouteService first (more accurate for long routes)
-    if (options?.preferORS !== false) {
-      try {
+    // 1. Try Backend OpenRouteService Proxy
+    route = await calculateRouteBackend(start, end);
+  } catch (backendErr: any) {
+    console.warn('[RoutingService] Backend proxy unfulfilled, falling back to direct client routing:', backendErr.message);
+
+    try {
+      if (options?.preferORS !== false) {
         route = await calculateRouteORS(start, end, options?.apiKey);
-      } catch (orsError: any) {
-        console.warn('OpenRouteService failed, falling back to OSRM:', orsError.message);
+      } else {
         route = await calculateRouteOSRM(start, end);
       }
-    } else {
+    } catch (clientErr: any) {
+      console.warn('[RoutingService] Direct client routing failed, using OSRM fallback:', clientErr.message);
       route = await calculateRouteOSRM(start, end);
     }
-  } catch (error: any) {
-    // If both fail, throw error
-    throw new Error(`Routing failed: ${error.message}`);
   }
 
   // Analyze route for hazards
@@ -229,24 +293,21 @@ export async function calculateSafeRoute(
     if (hazardAnalysis.criticalCount > 0) {
       route.warnings = [
         ...(route.warnings || []),
-        '⚠️ WARNING: This route passes near high-risk hazard zones',
+        '⚠️ WARNING: This route passes near high-risk hazard zones or active blockages',
         ...hazardAnalysis.warnings,
-        '',
-        '⚠️ This route may not be completely safe. Exercise extreme caution.',
-        '⚠️ Check with local authorities before proceeding.',
+        '⚠️ Check with local emergency authorities before proceeding.',
       ];
     } else if (hazardAnalysis.warningCount > 0) {
       route.warnings = [
         ...(route.warnings || []),
         ...hazardAnalysis.warnings,
-        '',
         'ℹ️ Route passes near moderate risk areas. Proceed with caution.',
       ];
     } else {
       route.warnings = [
         ...(route.warnings || []),
-        '✓ Route does not pass near known high-risk zones',
-        'ℹ️ However, conditions may change. Stay alert and follow local advisories.',
+        '✓ Route does not pass near known high-risk zones or active road blockages',
+        'ℹ️ Stay alert and follow local emergency advisories.',
       ];
     }
 
@@ -255,14 +316,6 @@ export async function calculateSafeRoute(
       hazardAnalysis,
     };
   }
-
-  // No hazard data available
-  route.warnings = [
-    ...(route.warnings || []),
-    'ℹ️ Real-time hazard data unavailable',
-    'ℹ️ Route shown is based on road network only',
-    'ℹ️ Check with local authorities for current road conditions',
-  ];
 
   return route;
 }
