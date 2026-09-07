@@ -122,30 +122,69 @@ async function extractCanvasPixels(
   });
 }
 
-function computeHistogram(data: Uint8ClampedArray) {
-  let skin = 0, paper = 0, green = 0, earth = 0, rock = 0, water = 0;
+function computeHistogram(data: Uint8ClampedArray, width: number = 384, height: number = 384) {
+  let skin = 0, centerSkin = 0, paper = 0, green = 0, earth = 0, rock = 0, water = 0;
   const total = data.length / 4;
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i], g = data[i + 1], b = data[i + 2];
-    const brightness = (r + g + b) / 3;
+  let centerTotal = 0;
 
-    const rgRatio = r / (g || 1);
-    const rbgRatio = (r - b) / (r - g || 1);
+  const minCenterX = Math.floor(width * 0.20);
+  const maxCenterX = Math.floor(width * 0.80);
+  const minCenterY = Math.floor(height * 0.15);
+  const maxCenterY = Math.floor(height * 0.80);
+
+  for (let i = 0; i < data.length; i += 4) {
+    const pixelIndex = i / 4;
+    const px = pixelIndex % width;
+    const py = Math.floor(pixelIndex / width);
+    const isCenter = (px >= minCenterX && px <= maxCenterX && py >= minCenterY && py <= maxCenterY);
+    if (isCenter) centerTotal++;
+
+    const r = data[i], g = data[i + 1], b = data[i + 2];
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const delta = max - min;
+    const v = max / 255;
+    const s = max === 0 ? 0 : delta / max;
+
+    let h = 0;
+    if (delta > 0) {
+      if (max === r) h = ((g - b) / delta) % 6;
+      else if (max === g) h = (b - r) / delta + 2;
+      else h = (r - g) / delta + 4;
+      h = Math.round(h * 60);
+      if (h < 0) h += 360;
+    }
+
     const isSkin = (
-      r > 80 && g > 45 && b > 25 &&
-      r > g + 12 && g > b + 8 &&
-      rgRatio >= 1.15 && rgRatio <= 1.45 &&
-      rbgRatio >= 1.25 && rbgRatio <= 1.85
+      (h <= 25 || h >= 340) &&
+      s >= 0.22 && s <= 0.60 &&
+      v >= 0.40 && v <= 0.95 &&
+      r > 95 && r > g + 15 && g > b + 12 &&
+      (r - b) / (r - g || 1) >= 1.3 && (r - b) / (r - g || 1) <= 1.85
     );
 
-    if (isSkin) skin++;
-    else if (r > 195 && g > 195 && b > 195 && Math.abs(r - g) < 12 && Math.abs(g - b) < 12) paper++;
-    else if (g > r + 8 && g > b + 6 && brightness > 20) green++;
-    else if (r > 50 && g > 35 && b < 130 && r > b + 8 && brightness > 20 && brightness < 180) earth++;
-    else if (Math.abs(r - g) < 20 && Math.abs(g - b) < 20 && brightness > 25 && brightness < 215) rock++;
-    else if (b > r + 25 && b > g + 15 && b > 80 && r < 140) water++;
+    const isEarth = (h >= 15 && h <= 55) && s >= 0.15 && v >= 0.15 && v <= 0.80 && r >= 45 && g >= 30;
+    const isRock = s < 0.20 && v >= 0.15 && v <= 0.85 && Math.abs(r - g) < 22 && Math.abs(g - b) < 22;
+    const isGreen = h >= 65 && h <= 165 && s >= 0.15 && v >= 0.12;
+    const isWater = (h >= 170 && h <= 250 && s >= 0.15) || (b > r + 15 && b > g + 10 && b > 75);
+    const isPaper = s < 0.10 && v > 0.85;
+
+    if (isSkin) {
+      skin++;
+      if (isCenter) centerSkin++;
+    } else if (isPaper) {
+      paper++;
+    } else if (isGreen) {
+      green++;
+    } else if (isEarth) {
+      earth++;
+    } else if (isRock) {
+      rock++;
+    } else if (isWater) {
+      water++;
+    }
   }
-  return { total, skin, paper, green, earth, rock, water };
+  return { total, centerTotal, skin, centerSkin, paper, green, earth, rock, water };
 }
 
 /**
@@ -214,7 +253,7 @@ export async function classifyHazardImage(
 
   // 1. Send media image & color histogram to Backend Hugging Face Vision API
   if (pixelResult?.base64DataUrl) {
-    const colorHistogram = pixelResult.data ? computeHistogram(pixelResult.data) : undefined;
+    const colorHistogram = pixelResult.data ? computeHistogram(pixelResult.data, pixelResult.width, pixelResult.height) : undefined;
     const backendResult = await tryBackendHuggingFaceInspection(pixelResult.base64DataUrl, categoryHint, colorHistogram);
     if (backendResult) {
       return backendResult;

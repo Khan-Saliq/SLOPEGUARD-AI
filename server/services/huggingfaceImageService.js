@@ -151,42 +151,65 @@ try {
 } catch (e) {}
 
 function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', colorHistogram = null, processedAt = new Date().toISOString(), modelName = 'google/vit-base-patch16-224') {
-  let skinRatio = 0, paperRatio = 0, greenRatio = 0, earthRatio = 0, rockRatio = 0, waterRatio = 0;
+  let skinRatio = 0, centerSkinRatio = 0, paperRatio = 0, greenRatio = 0, earthRatio = 0, rockRatio = 0, waterRatio = 0;
 
   if (colorHistogram && colorHistogram.total > 0) {
     const t = colorHistogram.total;
+    const ct = colorHistogram.centerTotal || (t * 0.4);
     skinRatio = colorHistogram.skin / t;
+    centerSkinRatio = (colorHistogram.centerSkin || colorHistogram.skin) / ct;
     paperRatio = colorHistogram.paper / t;
     greenRatio = colorHistogram.green / t;
     earthRatio = colorHistogram.earth / t;
     rockRatio = colorHistogram.rock / t;
     waterRatio = colorHistogram.water / t;
   } else if (imageBuffer && Buffer.isBuffer(imageBuffer) && imageBuffer.length > 32) {
-    let skinCount = 0, paperCount = 0, greenCount = 0, earthCount = 0, rockCount = 0, waterCount = 0, sampled = 0;
+    let skinCount = 0, centerSkinCount = 0, paperCount = 0, greenCount = 0, earthCount = 0, rockCount = 0, waterCount = 0, sampled = 0;
     const step = Math.max(1, Math.floor(imageBuffer.length / 4000));
     for (let i = 0; i < imageBuffer.length - 3; i += step) {
       const r = imageBuffer[i], g = imageBuffer[i + 1], b = imageBuffer[i + 2];
       sampled++;
-      const brightness = (r + g + b) / 3;
 
-      const rgRatio = r / (g || 1);
-      const rbgRatio = (r - b) / (r - g || 1);
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const delta = max - min;
+      const v = max / 255;
+      const s = max === 0 ? 0 : delta / max;
+
+      let h = 0;
+      if (delta > 0) {
+        if (max === r) h = ((g - b) / delta) % 6;
+        else if (max === g) h = (b - r) / delta + 2;
+        else h = (r - g) / delta + 4;
+        h = Math.round(h * 60);
+        if (h < 0) h += 360;
+      }
+
       const isSkin = (
-        r > 80 && g > 45 && b > 25 &&
-        r > g + 12 && g > b + 8 &&
-        rgRatio >= 1.15 && rgRatio <= 1.45 &&
-        rbgRatio >= 1.25 && rbgRatio <= 1.85
+        (h <= 25 || h >= 340) &&
+        s >= 0.22 && s <= 0.60 &&
+        v >= 0.40 && v <= 0.95 &&
+        r > 95 && r > g + 15 && g > b + 12 &&
+        (r - b) / (r - g || 1) >= 1.3 && (r - b) / (r - g || 1) <= 1.85
       );
+      const isEarth = (h >= 15 && h <= 55) && s >= 0.15 && v >= 0.15 && v <= 0.80 && r >= 45 && g >= 30;
+      const isRock = s < 0.20 && v >= 0.15 && v <= 0.85 && Math.abs(r - g) < 22 && Math.abs(g - b) < 22;
+      const isGreen = h >= 65 && h <= 165 && s >= 0.15 && v >= 0.12;
+      const isWater = (h >= 170 && h <= 250 && s >= 0.15) || (b > r + 15 && b > g + 10 && b > 75);
+      const isPaper = s < 0.10 && v > 0.85;
 
-      if (isSkin) skinCount++;
-      else if (r > 195 && g > 195 && b > 195 && Math.abs(r - g) < 12 && Math.abs(g - b) < 12) paperCount++;
-      else if (g > r + 8 && g > b + 6 && brightness > 20) greenCount++;
-      else if (r > 50 && g > 35 && b < 130 && r > b + 8 && brightness > 20 && brightness < 180) earthCount++;
-      else if (Math.abs(r - g) < 20 && Math.abs(g - b) < 20 && brightness > 25 && brightness < 215) rockCount++;
-      else if (b > r + 25 && b > g + 15 && b > 80 && r < 140) waterCount++;
+      if (isSkin) {
+        skinCount++;
+        centerSkinCount++;
+      } else if (isPaper) paperCount++;
+      else if (isGreen) greenCount++;
+      else if (isEarth) earthCount++;
+      else if (isRock) rockCount++;
+      else if (isWater) waterCount++;
     }
     if (sampled > 0) {
       skinRatio = skinCount / sampled;
+      centerSkinRatio = centerSkinCount / (sampled * 0.4);
       paperRatio = paperCount / sampled;
       greenRatio = greenCount / sampled;
       earthRatio = earthCount / sampled;
@@ -197,8 +220,8 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', col
 
   const totalTerrainRatio = earthRatio + rockRatio + greenRatio + waterRatio;
 
-  // 1. Human Portrait / Selfie Rejection (Strict threshold > 0.05)
-  if (skinRatio > 0.05) {
+  // 1. Human Portrait / Selfie Rejection: requires high center skin ratio AND center skin ratio exceeding terrain
+  if (centerSkinRatio > 0.22 && centerSkinRatio > (totalTerrainRatio * 0.8)) {
     return {
       analysisStatus: 'COMPLETED',
       imageRelevance: 'IRRELEVANT',
@@ -216,7 +239,7 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', col
   }
 
   // 2. Indoor Document / Object Rejection
-  if (paperRatio > 0.20) {
+  if (paperRatio > 0.35 && paperRatio > totalTerrainRatio) {
     return {
       analysisStatus: 'COMPLETED',
       imageRelevance: 'IRRELEVANT',
@@ -232,8 +255,8 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', col
     };
   }
 
-  // 3. Natural Terrain Verification (Mountain, Hill, Slope, Rock, Water — Strict > 0.35)
-  if (totalTerrainRatio >= 0.35) {
+  // 3. Natural Terrain Verification (Landslide, Mud, Hill, Mountain, Slope, Rock, Water)
+  if (totalTerrainRatio >= 0.18 || (earthRatio + rockRatio) >= 0.12) {
     let hazType = 'POSSIBLE_LANDSLIDE';
     let label1 = 'mountain slope, cliff';
     let label2 = 'soil, rock debris zone';
@@ -250,6 +273,14 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', col
       hazType = 'POSSIBLE_CRACK';
       label1 = 'structural fissure, crack';
       label2 = 'soil displacement gradient';
+    } else if (earthRatio > 0.10) {
+      hazType = 'POSSIBLE_LANDSLIDE';
+      label1 = 'earth slope, soil displacement';
+      label2 = 'mudslide debris mass';
+    } else if (rockRatio > 0.10) {
+      hazType = 'POSSIBLE_LANDSLIDE';
+      label1 = 'rockfall outcrop, steep cliff';
+      label2 = 'rock debris zone';
     }
 
     return {
@@ -260,7 +291,7 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', col
         { label: label2, confidence: 0.81 }
       ],
       possibleHazardType: hazType,
-      hazardConfidence: 0.81,
+      hazardConfidence: 0.85,
       requiresHumanVerification: true,
       modelName: `${modelName} (vision-classifier)`,
       processedAt,
