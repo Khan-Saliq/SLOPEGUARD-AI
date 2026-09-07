@@ -646,17 +646,17 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
 
     fetch('/api/risk-zones', { headers })
       .then(r => r.json())
-      .then(data => { if (Array.isArray(data) && data.length) setRiskZones(data); })
+      .then(data => { if (Array.isArray(data)) setRiskZones(data); })
       .catch(() => {});
 
     fetch('/api/alerts', { headers })
       .then(r => r.json())
-      .then(data => { if (Array.isArray(data) && data.length) setAlerts(data); })
+      .then(data => { if (Array.isArray(data)) setAlerts(data); })
       .catch(() => {});
 
     fetch('/api/reports', { headers })
       .then(r => r.json())
-      .then(data => { if (Array.isArray(data) && data.length) setCitizenReports(data); })
+      .then(data => { if (Array.isArray(data)) setCitizenReports(data); })
       .catch(() => {});
 
     refreshRoads();
