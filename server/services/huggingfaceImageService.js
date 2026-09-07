@@ -269,8 +269,29 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', col
     };
   }
 
+  // 2b. Neutral Grey Object / Floor / Wall Rejection (Grey ratio > 18% BUT natural earth, green, or water surroundings < 8%)
+  const naturalSurroundingsP = earthP + greenP + waterP;
+  if (rockP > 18 && naturalSurroundingsP < 8) {
+    const greyConf = Number(Math.min(0.95, Math.max(0.70, (rockRatio * 0.8) + 0.35)).toFixed(2));
+
+    return {
+      analysisStatus: 'COMPLETED',
+      imageRelevance: 'IRRELEVANT',
+      detectedLabels: [
+        { label: `neutral grey object / floor tile / wall (grey ratio: ${rockP}%)`, confidence: greyConf },
+        { label: `lack of natural earth or greenery surroundings (surroundings: ${naturalSurroundingsP}%)`, confidence: 0.85 }
+      ],
+      possibleHazardType: 'IRRELEVANT',
+      hazardConfidence: 0.05,
+      requiresHumanVerification: true,
+      modelName: `${modelName} (vision-classifier)`,
+      processedAt,
+      summaryMessage: '🔴 REJECTED BY AI ML MODEL: Neutral grey object, floor, or wall detected without natural terrain surroundings (no earth, greenery, or water body found).'
+    };
+  }
+
   // 3. Natural Terrain Verification (Landslide, Mud, Hill, Mountain, Slope, Rock, Water)
-  if (totalTerrainRatio >= 0.18 || (earthRatio + rockRatio) >= 0.12) {
+  if ((totalTerrainRatio >= 0.18 && naturalSurroundingsP >= 8) || (earthP >= 12) || (waterP >= 10)) {
     let hazType = 'POSSIBLE_LANDSLIDE';
     const detectedLabels = [];
 
