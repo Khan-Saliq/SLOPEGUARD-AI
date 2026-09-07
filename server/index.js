@@ -307,7 +307,12 @@ function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
     const r = req.user.role || req.user.role?.toString();
-    if (roles.includes(r) || (r === 'super_admin' && roles.includes('authority'))) return next();
+    if (
+      roles.includes(r) ||
+      ((r === 'super_admin' || r === 'admin') && (roles.includes('authority') || roles.includes('admin')))
+    ) {
+      return next();
+    }
     return res.status(403).json({ error: 'Forbidden' });
   };
 }
