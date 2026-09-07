@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useApp } from '../hooks/useApp';
+import { useMonitorData } from '../hooks/useMonitorData';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { StatusBadge, RiskBadge } from '../components/ui/Badge';
@@ -23,6 +24,7 @@ import {
   CheckCircle2,
   X,
   Compass,
+  Trash2,
 } from 'lucide-react';
 import type { CitizenReport, RiskLevel } from '../types';
 
@@ -41,6 +43,7 @@ interface AssignmentItem {
 
 export default function AssignmentsPage() {
   const { token, user } = useApp();
+  const { deleteReport } = useMonitorData();
   const [items, setItems] = useState<AssignmentItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
@@ -53,8 +56,51 @@ export default function AssignmentsPage() {
   const [assignmentNotes, setAssignmentNotes] = useState<string>('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingReportId, setDeletingReportId] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  const handleDeleteReport = async (reportId: string) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to permanently delete Report #${reportId}? This will remove the report, associated task assignments, notifications, and physical evidence photo from the system and database.`
+      )
+    ) {
+      return;
+    }
+
+    setDeletingReportId(reportId);
+    try {
+      const res = await fetch(`/api/reports/${reportId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        // Sync context
+        try {
+          deleteReport(reportId);
+        } catch (e) {}
+
+        // Remove from local reports & items state
+        setReports(prev => prev.filter(r => r.id !== reportId));
+        setItems(prev => prev.filter(a => a.reportId !== reportId));
+
+        if (selectedReportId === reportId) {
+          setSelectedReportId(null);
+        }
+
+        setSuccessMsg(`✓ Report #${reportId} deleted permanently from database, frontend UI, and backend API.`);
+      } else {
+        const err = await res.json();
+        alert('Failed to delete report: ' + (err.error || 'Server error'));
+      }
+    } catch (e: any) {
+      alert('Failed to delete report: ' + e.message);
+    } finally {
+      setDeletingReportId(null);
+    }
+  };
 
   const fetchAssignments = async () => {
     setLoading(true);
@@ -398,14 +444,30 @@ export default function AssignmentsPage() {
                   <StatusBadge status={activeReport.status} />
                 </div>
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedReportId(null)}
-                  className="text-[11px] h-7 px-2.5 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="w-3.5 h-3.5 mr-1" /> Close Inspection
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={deletingReportId === activeReport.id}
+                    onClick={() => handleDeleteReport(activeReport.id)}
+                    className="text-[11px] h-7 px-2.5 bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20 hover:text-red-300 font-semibold"
+                  >
+                    {deletingReportId === activeReport.id ? (
+                      <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3.5 h-3.5 mr-1 text-red-400" />
+                    )}
+                    Delete Report
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedReportId(null)}
+                    className="text-[11px] h-7 px-2.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-3.5 h-3.5 mr-1" /> Close Inspection
+                  </Button>
+                </div>
               </div>
 
               {/* 3-Column Detailed Information Layout */}
@@ -720,6 +782,15 @@ export default function AssignmentsPage() {
                       </div>
 
                       <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedReportId(a.reportId)}
+                          className="text-[11px] font-semibold text-accent-bright border-accent/40 hover:bg-accent/20 px-2.5 py-1"
+                        >
+                          <Eye className="w-3.5 h-3.5 mr-1" /> Inspect
+                        </Button>
+
                         {(!a.assigneeId || a.assigneeId === null) && (
                           <Button size="sm" onClick={() => claimAssignment(a.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1">
                             <UserCheck className="w-3.5 h-3.5 mr-1" /> Claim Task
@@ -731,6 +802,21 @@ export default function AssignmentsPage() {
                             <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-emerald-400" /> Mark Resolved
                           </Button>
                         )}
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={deletingReportId === a.reportId}
+                          onClick={() => handleDeleteReport(a.reportId)}
+                          className="text-[11px] font-semibold text-red-400 border-red-500/30 hover:bg-red-500/20 px-2.5 py-1"
+                          title="Delete Report & Task"
+                        >
+                          {deletingReportId === a.reportId ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                          )}
+                        </Button>
                       </div>
                     </div>
 

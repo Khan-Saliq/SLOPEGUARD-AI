@@ -519,6 +519,55 @@ app.post('/api/reports/:id/review', authMiddleware, requireRole('authority'), as
   res.json(r.value);
 });
 
+// Authority & Admin delete report endpoint
+app.delete('/api/reports/:id', authMiddleware, requireRole('authority', 'admin'), async (req, res) => {
+  try {
+    const id = req.params.id;
+    const db = getDb();
+
+    const report = await db.collection('reports').findOne({ id });
+    if (!report) {
+      return res.status(404).json({ error: 'Report not found' });
+    }
+
+    // Delete physical uploaded image file if present in server/uploads
+    const evidenceUrl = report.evidenceUrl || report.mediaUrl || report.imageUrl || report.photoUrl;
+    if (evidenceUrl && typeof evidenceUrl === 'string' && evidenceUrl.includes('/uploads/')) {
+      try {
+        const filename = path.basename(evidenceUrl);
+        const uploadsDir = path.join(__dirname, 'uploads');
+        const filePath = path.join(uploadsDir, filename);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+          appendLog('delete-report-file-success', { id, filePath });
+        }
+      } catch (e) {
+        appendLog('delete-report-file-error', { id, err: e && e.message });
+      }
+    }
+
+    // Delete report document
+    await db.collection('reports').deleteOne({ id });
+
+    // Delete matching assignments
+    await db.collection('assignments').deleteMany({ reportId: id });
+
+    // Delete matching notifications
+    await db.collection('notifications').deleteMany({
+      $or: [
+        { 'meta.reportId': id },
+        { reportId: id }
+      ]
+    });
+
+    appendLog('delete-report-success', { id, deletedBy: req.user.id });
+    res.json({ success: true, deletedReportId: id });
+  } catch (err) {
+    appendLog('delete-report-failure', { id: req.params.id, err: err && err.message });
+    res.status(500).json({ error: 'Failed to delete report', details: err.message });
+  }
+});
+
 // list users (for assignee lookup)
 app.get('/api/users', authMiddleware, requireRole('authority'), async (req, res) => {
   const users = await getDb().collection('users').find({}, { projection: { passwordHash: 0 } }).toArray();

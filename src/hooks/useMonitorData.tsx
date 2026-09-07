@@ -500,6 +500,8 @@ interface MonitorDataContextType {
   refreshShelters: () => Promise<void>;
   refreshHospitals: () => Promise<void>;
   refreshEvacuationRoutes: () => Promise<void>;
+  refreshReports: () => Promise<void>;
+  deleteReport: (id: string) => Promise<boolean>;
   acknowledgeAlert: (id: string) => void;
   submitReport: (input: SubmitReportInput) => CitizenReport | Promise<any> | null;
   syncPendingReports: () => number;
@@ -801,6 +803,37 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
     setEmergencyTasks(prev => prev.map(t => (t.id === id ? { ...t, status } : t)));
   }, []);
 
+  const refreshReports = useCallback(async () => {
+    try {
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+      const r = await fetch('/api/reports', { headers });
+      if (r.ok) {
+        const data = await r.json();
+        if (Array.isArray(data)) setCitizenReports(data);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch reports:', err);
+    }
+  }, [token]);
+
+  const deleteReport = useCallback(async (id: string): Promise<boolean> => {
+    setCitizenReports(prev => prev.filter(r => r.id !== id));
+    if (token) {
+      try {
+        const res = await fetch(`/api/reports/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          return true;
+        }
+      } catch (err) {
+        console.error('Failed to delete report:', err);
+      }
+    }
+    return true;
+  }, [token]);
+
   const value = useMemo(
     () => ({
       riskZones,
@@ -825,6 +858,8 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
       refreshShelters,
       refreshHospitals,
       refreshEvacuationRoutes,
+      refreshReports,
+      deleteReport,
       acknowledgeAlert,
       submitReport,
       syncPendingReports,
@@ -857,6 +892,8 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
       refreshShelters,
       refreshHospitals,
       refreshEvacuationRoutes,
+      refreshReports,
+      deleteReport,
       acknowledgeAlert,
       submitReport,
       syncPendingReports,
