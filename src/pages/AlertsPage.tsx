@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useApp } from '../hooks/useApp';
 import { useMonitorData } from '../hooks/useMonitorData';
 import { Card, CardContent } from '../components/ui/Card';
 import { RiskBadge, DataSourceBadge, StatusBadge } from '../components/ui/Badge';
@@ -29,9 +30,11 @@ const actionGuide: Record<string, { icon: typeof Bell; actions: string[] }> = {
 };
 
 export function AlertsPage() {
+  const { user } = useApp();
   const { alerts, acknowledgeAlert } = useMonitorData();
   const [showEvaluatorExplanations, setShowEvaluatorExplanations] = useState(true);
 
+  const isAdmin = ['authority', 'admin', 'super_admin'].includes(user?.role ?? '');
   const unacknowledged = alerts.filter(a => !a.acknowledged);
   const acknowledged = alerts.filter(a => a.acknowledged);
 
@@ -82,20 +85,22 @@ export function AlertsPage() {
         </Card>
       </div>
 
-      {/* Step 1: Interactive Automated SMS & Multi-Channel Broadcast Console */}
-      <div className="space-y-3">
-        <BroadcastSimulator />
-        
-        {showEvaluatorExplanations && (
-          <EvaluatorExplanationCard
-            title="Automated SMS & Multi-Channel Broadcast Dispatch System"
-            purpose="Simulates automated multi-channel early warning dispatches (Mass SMS via telecom gateways, WhatsApp Meta Cloud API, PA Siren Towers, and NDRF Emergency Hotlines) across NER districts in regional languages."
-            inputs="AI risk probability thresholds, affected village boundaries, and multilingual notification templates (English, Assamese, Khasi, Hindi, Manipuri)."
-            psReference="PS_26001 Requirement (c), (f) & Expected Solution point 5"
-            evaluatorNote="Demonstrates automated early warning dispatch capabilities that notify district magistrates, local village heads, and NDRF rescue teams before catastrophic landslides strike."
-          />
-        )}
-      </div>
+      {/* Step 1: Interactive Automated SMS Broadcast Console (Admin / Authority Only) */}
+      {isAdmin && (
+        <div className="space-y-3">
+          <BroadcastSimulator />
+          
+          {showEvaluatorExplanations && (
+            <EvaluatorExplanationCard
+              title="Automated SMS Broadcast Dispatch System"
+              purpose="Simulates automated early warning dispatches across NER districts in regional languages."
+              inputs="AI risk probability thresholds, affected village boundaries, and multilingual notification templates (English, Assamese, Khasi, Hindi, Manipuri)."
+              psReference="PS_26001 Requirement (c), (f) & Expected Solution point 5"
+              evaluatorNote="Demonstrates automated early warning dispatch capabilities that notify district magistrates, local village heads, and rescue teams before catastrophic landslides strike."
+            />
+          )}
+        </div>
+      )}
 
       {/* Active Warning Queue */}
       <div className="space-y-4">

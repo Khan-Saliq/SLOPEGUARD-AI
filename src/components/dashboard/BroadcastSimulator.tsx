@@ -3,18 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { RiskBadge } from '../ui/Badge';
-import { Radio, Send, CheckCircle2, PhoneCall, Smartphone, Volume2, ShieldAlert, Sparkles, MessageSquare } from 'lucide-react';
+import { Radio, Send, CheckCircle2, ShieldAlert, Sparkles } from 'lucide-react';
 import type { RiskLevel } from '../../types';
-
-interface BroadcastChannel {
-  id: string;
-  name: string;
-  type: string;
-  icon: typeof Radio;
-  recipients: string;
-  status: 'idle' | 'broadcasting' | 'sent';
-  sentCount: number;
-}
 
 const MULTILINGUAL_TEMPLATES: Record<string, Record<RiskLevel, string>> = {
   en: {
@@ -54,39 +44,17 @@ export function BroadcastSimulator() {
   const [selectedLevel, setSelectedLevel] = useState<RiskLevel>('critical');
   const [selectedLang, setSelectedLang] = useState('en');
   const [isBroadcasting, setIsBroadcasting] = useState(false);
-  const [lastBroadcast, setLastBroadcast] = useState<{ time: string; count: number; district: string } | null>(null);
-
-  const [channels, setChannels] = useState<BroadcastChannel[]>([
-    { id: 'sms', name: 'Mass SMS Broadcast', type: 'Telecom Gateway', icon: Smartphone, recipients: '14,250 Mobile Subscribers', status: 'idle', sentCount: 0 },
-    { id: 'whatsapp', name: 'District WhatsApp Alerts', type: 'Meta Cloud API', icon: MessageSquare, recipients: '82 Community & Village Leaders', status: 'idle', sentCount: 0 },
-    { id: 'siren', name: 'Village PA System & Sirens', type: 'IoT Radio Mesh', icon: Volume2, recipients: '18 Hilltop PA Towers', status: 'idle', sentCount: 0 },
-    { id: 'ndrf', name: 'NDRF & Hotline Emergency Dispatch', type: 'Satellite Radio / TETRA', icon: PhoneCall, recipients: 'District Emergency Command (DEOC)', status: 'idle', sentCount: 0 },
-  ]);
+  const [lastBroadcast, setLastBroadcast] = useState<{ time: string; district: string } | null>(null);
 
   const handleTriggerBroadcast = () => {
     setIsBroadcasting(true);
-    
-    // Simulate multi-channel dispatch progression
-    setChannels(prev => prev.map(c => ({ ...c, status: 'broadcasting', sentCount: 0 })));
-
     setTimeout(() => {
-      setChannels(prev =>
-        prev.map(c => {
-          let count = 0;
-          if (c.id === 'sms') count = 14250;
-          if (c.id === 'whatsapp') count = 82;
-          if (c.id === 'siren') count = 18;
-          if (c.id === 'ndrf') count = 1;
-          return { ...c, status: 'sent', sentCount: count };
-        })
-      );
       setIsBroadcasting(false);
       setLastBroadcast({
         time: new Date().toLocaleTimeString(),
-        count: 14351,
         district: selectedDistrict,
       });
-    }, 1500);
+    }, 1200);
   };
 
   const currentMessageTemplate = MULTILINGUAL_TEMPLATES[selectedLang][selectedLevel].replace('{district}', selectedDistrict);
@@ -160,7 +128,7 @@ export function BroadcastSimulator() {
         </div>
 
         {/* Live Multilingual Message Payload Preview */}
-        <div className="rounded-lg border border-accent/20 bg-accent/5 p-3 space-y-1.5">
+        <div className="rounded-lg border border-accent/20 bg-accent/5 p-3 space-y-2">
           <div className="flex items-center justify-between text-[11px]">
             <span className="font-semibold text-accent-bright uppercase tracking-wider flex items-center gap-1">
               <ShieldAlert className="h-3.5 w-3.5" /> Broadcast Message Payload
@@ -170,14 +138,7 @@ export function BroadcastSimulator() {
           <p className="text-xs text-main font-mono leading-relaxed bg-black/30 p-2.5 rounded border border-border/40">
             "{currentMessageTemplate}"
           </p>
-        </div>
-
-        {/* Active Multi-Channel Dispatch Grid */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-main uppercase tracking-wider">
-              Multi-Channel Dispatch Channels
-            </span>
+          <div className="flex justify-end pt-1">
             <Button
               variant="primary"
               size="sm"
@@ -188,44 +149,6 @@ export function BroadcastSimulator() {
               <Send className={`h-3.5 w-3.5 ${isBroadcasting ? 'animate-bounce' : ''}`} />
               {isBroadcasting ? 'Broadcasting Alert...' : 'Dispatch Automated Broadcast Now'}
             </Button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {channels.map(channel => {
-              const Icon = channel.icon;
-              return (
-                <div
-                  key={channel.id}
-                  className="rounded-lg border border-border/60 bg-card-hover/40 p-3 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/15 text-accent-bright">
-                      <Icon className="h-4.5 w-4.5" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-main">{channel.name}</p>
-                      <p className="text-[10px] text-dim">{channel.recipients}</p>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    {channel.status === 'broadcasting' && (
-                      <span className="text-[10px] text-accent-bright font-mono animate-pulse flex items-center gap-1">
-                        <Radio className="h-3 w-3 animate-spin" /> Transmitting...
-                      </span>
-                    )}
-                    {channel.status === 'sent' && (
-                      <span className="text-[10px] text-low font-mono flex items-center gap-1 font-semibold">
-                        <CheckCircle2 className="h-3 w-3 text-low" /> {channel.sentCount.toLocaleString()} Sent
-                      </span>
-                    )}
-                    {channel.status === 'idle' && (
-                      <span className="text-[10px] text-dim font-mono">Ready</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
 
@@ -239,7 +162,7 @@ export function BroadcastSimulator() {
             >
               <span className="flex items-center gap-2 font-medium">
                 <CheckCircle2 className="h-4 w-4" />
-                Broadcast successfully dispatched to {lastBroadcast.district}! ({lastBroadcast.count.toLocaleString()} total alerts sent across SMS, WhatsApp, and PA Sirens)
+                Broadcast successfully dispatched to {lastBroadcast.district}!
               </span>
               <span className="font-mono text-[10px] opacity-80">Timestamp: {lastBroadcast.time}</span>
             </motion.div>

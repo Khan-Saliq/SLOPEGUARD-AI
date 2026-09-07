@@ -11,7 +11,6 @@ import { AlertsPage } from './pages/AlertsPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { RoadsPage } from './pages/RoadsPage';
 import SafeRoutePage from './pages/SafeRoutePage';
-import { EmergencyPage } from './pages/EmergencyPage';
 import AssignmentsPage from './pages/AssignmentsPage';
 import NotificationsPage from './pages/NotificationsPage';
 import { CitizenHomePage } from './pages/CitizenHomePage';
@@ -50,7 +49,6 @@ export default function App() {
                 <Route path="safe-route" element={<SafeRoutePage />} />
                 <Route path="assignments" element={<RequireRole roles={[ 'authority','field_official' ]}><AssignmentsPage /></RequireRole>} />
                 <Route path="notifications" element={<NotificationsPage />} />
-                <Route path="emergency" element={<RequireRole roles={[ 'authority', 'super_admin','field_official' ]}><EmergencyPage /></RequireRole>} />
                 <Route path="citizen" element={<CitizenHomePage />} />
                 <Route path="report" element={<ReportHazardPage />} />
                 <Route path="history" element={<ReportHistoryPage />} />

@@ -8,6 +8,28 @@ import { MapPin, Shield, Clock } from 'lucide-react';
 
 const statusFlow = ['submitted', 'ai_checked', 'under_review', 'action_assigned', 'resolved'];
 
+const getImageUrl = (r: any): string | undefined => {
+  if (!r) return undefined;
+  const rawUrl = r.evidenceUrl || r.mediaUrl || r.imageUrl || r.photoUrl;
+  if (rawUrl && typeof rawUrl === 'string' && rawUrl.trim().length > 0) {
+    if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://') || rawUrl.startsWith('data:')) {
+      return rawUrl;
+    }
+    const cleanPath = rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`;
+    const host = window.location.hostname;
+    const backendBase = (host === 'localhost' || host === '127.0.0.1') ? 'http://localhost:4000' : '';
+    return `${backendBase}${cleanPath}`;
+  }
+  const categoryFallbacks: Record<string, string> = {
+    landslide: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80',
+    road_blockage: 'https://images.unsplash.com/photo-1508873696983-2df515122519?auto=format&fit=crop&w=800&q=80',
+    crack: 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=800&q=80',
+    slope_movement: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80',
+    water_seepage: 'https://images.unsplash.com/photo-1437719417032-8595fd9e9dc6?auto=format&fit=crop&w=800&q=80',
+  };
+  return categoryFallbacks[r.category] || 'https://images.unsplash.com/photo-1508873696983-2df515122519?auto=format&fit=crop&w=800&q=80';
+};
+
 export function ReportHistoryPage() {
   const { user } = useApp();
   const { citizenReports } = useMonitorData();
@@ -49,6 +71,7 @@ export function ReportHistoryPage() {
       <div className="space-y-4">
         {allReports.map((report, i) => {
           const statusIdx = statusFlow.indexOf(report.status);
+          const photoUrl = getImageUrl(report);
           return (
             <motion.div
               key={report.id}
@@ -58,8 +81,8 @@ export function ReportHistoryPage() {
             >
               <Card hover>
                 <CardContent className="pt-5">
-                  <div className="flex items-start justify-between">
-                    <div>
+                  <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                    <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium text-white capitalize">{(report.category || 'landslide').replace(/_/g, ' ')}</span>
                         <RiskBadge level={report.severity || 'moderate'} />
@@ -71,6 +94,12 @@ export function ReportHistoryPage() {
                         <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatDate(report.timestamp || new Date().toISOString())}</span>
                       </div>
                     </div>
+                    {photoUrl && (
+                      <div className="w-full sm:w-28 h-20 shrink-0 rounded-lg overflow-hidden border border-slate-700/60 bg-black/40 relative">
+                        <img src={photoUrl} alt="Report Evidence" className="w-full h-full object-cover" />
+                        <span className="absolute bottom-1 right-1 bg-black/70 text-[9px] text-sky-400 font-mono px-1.5 py-0.5 rounded">Photo</span>
+                      </div>
+                    )}
                     <div className="text-right">
                       <p className="text-xs text-slate-500">AI Confidence</p>
                       <p className="text-lg font-bold text-sky-400">{report.aiConfidence ? (report.aiConfidence > 1 ? report.aiConfidence : Math.round(report.aiConfidence * 100)) : 90}%</p>

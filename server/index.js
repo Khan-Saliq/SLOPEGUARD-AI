@@ -1080,8 +1080,13 @@ init().then(() => {
   });
 });
 
-// File upload handling: store uploads in server/uploads and return signed download URL
+// File upload handling: store uploads in server/uploads and return public download URL
 const uploadsDir = path.join(__dirname, 'uploads');
+try { fs.mkdirSync(uploadsDir, { recursive: true }); } catch (e) {}
+
+app.use('/uploads', express.static(uploadsDir));
+app.use('/api/uploads', express.static(uploadsDir));
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
   filename: (req, file, cb) => cb(null, `${Date.now()}-${nanoid()}${path.extname(file.originalname).toLowerCase()}`),
@@ -1091,22 +1096,15 @@ const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
 app.post('/api/upload', authMiddleware, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   const filename = req.file.filename;
-  // signed token valid for 1 hour
-  const token = jwt.sign({ filename }, SECRET, { expiresIn: '1h' });
+  const token = jwt.sign({ filename }, SECRET, { expiresIn: '7d' });
   const url = `/api/uploads/${encodeURIComponent(filename)}?token=${token}`;
   res.json({ url, filename });
 });
 
 app.get('/api/uploads/:filename', (req, res) => {
-  const token = req.query.token;
-  if (!token) return res.status(401).send('Unauthorized');
-  try {
-    const decoded = jwt.verify(String(token), SECRET);
-    if (decoded.filename !== req.params.filename) return res.status(401).send('Unauthorized');
-    const filePath = path.join(uploadsDir, req.params.filename);
-    if (!fs.existsSync(filePath)) return res.status(404).send('Not found');
+  const filePath = path.join(uploadsDir, req.params.filename);
+  if (fs.existsSync(filePath)) {
     return res.sendFile(filePath);
-  } catch (e) {
-    return res.status(401).send('Unauthorized');
   }
+  return res.status(404).send('Not found');
 });

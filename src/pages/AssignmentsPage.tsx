@@ -208,7 +208,13 @@ export default function AssignmentsPage() {
       r.image_url ||
       r.photo_url;
     if (url && typeof url === 'string' && url.trim().length > 0) {
-      return url;
+      if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+        return url;
+      }
+      const cleanPath = url.startsWith('/') ? url : `/${url}`;
+      const host = window.location.hostname;
+      const backendBase = (host === 'localhost' || host === '127.0.0.1') ? 'http://localhost:4000' : '';
+      return `${backendBase}${cleanPath}`;
     }
     // Category fallbacks for reports without custom photo attachments
     const categoryFallbacks: Record<string, string> = {

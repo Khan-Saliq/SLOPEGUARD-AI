@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard, Map, Bell, BarChart3, Route, Siren,
+  LayoutDashboard, Map, Bell, BarChart3, Route,
   Camera, History, Mountain, WifiOff, FileWarning, X,
 } from 'lucide-react';
 import { useApp } from '../../hooks/useApp';
@@ -18,7 +18,6 @@ const authorityLinks = [
   { to: '/assignments', icon: FileWarning, key: 'assignments' },
   { to: '/analytics', icon: BarChart3, key: 'analytics' },
   { to: '/roads', icon: Route, key: 'roads' },
-  { to: '/emergency', icon: Siren, key: 'emergency' },
 ];
 
 const citizenLinks = [
@@ -70,7 +69,6 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       alerts: 'Alerts',
       analytics: 'Analytics',
       roads: 'Roads',
-      emergency: 'Emergency',
       assignments: 'Assignments',
       report: 'Citizen Portal',
       reportHazard: 'Report Hazard',
