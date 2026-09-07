@@ -109,35 +109,38 @@ export function CameraCapture({ onCapture, onCancel }: CameraCaptureProps) {
     if (!ctx) return;
 
     ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-
-      const url = URL.createObjectURL(blob);
-      setCapturedPhoto(url);
-    }, 'image/jpeg', 0.92);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    setCapturedPhoto(dataUrl);
   };
 
   const confirmPhoto = () => {
     if (!capturedPhoto) return;
 
-    fetch(capturedPhoto)
-      .then(res => res.blob())
-      .then(blob => {
-        const captureMetadata: CaptureMetadata = {
-          captureMethod: 'camera_api',
-          captureTimestamp: new Date().toISOString(),
-          deviceInfo: navigator.userAgent,
-        };
+    // Convert base64 data URL to Blob for upload
+    const arr = capturedPhoto.split(',');
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    const blob = new Blob([u8arr], { type: mime });
 
-        onCapture({
-          blob,
-          url: capturedPhoto,
-          type: 'image',
-          timestamp: new Date(),
-          metadata: captureMetadata
-        });
-      });
+    const captureMetadata: CaptureMetadata = {
+      captureMethod: 'camera_api',
+      captureTimestamp: new Date().toISOString(),
+      deviceInfo: navigator.userAgent,
+    };
+
+    onCapture({
+      blob,
+      url: capturedPhoto,
+      type: 'image',
+      timestamp: new Date(),
+      metadata: captureMetadata
+    });
   };
 
   const retakePhoto = () => {
