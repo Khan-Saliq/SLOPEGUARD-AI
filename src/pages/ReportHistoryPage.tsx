@@ -33,8 +33,7 @@ const getImageUrl = (r: any): string | undefined => {
 export function ReportHistoryPage() {
   const { user } = useApp();
   const { citizenReports } = useMonitorData();
-  const myReports = citizenReports.filter(r => r.userId === (user?.id ?? ''));
-  const allReports = myReports.length > 0 ? myReports : citizenReports.slice(0, 3);
+  const allReports = citizenReports.filter(r => r.userId === (user?.id ?? ''));
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -69,7 +68,18 @@ export function ReportHistoryPage() {
       </Card>
 
       <div className="space-y-4">
-        {allReports.map((report, i) => {
+        {allReports.length === 0 ? (
+          <Card>
+            <CardContent className="pt-8 pb-8 text-center space-y-2">
+              <Shield className="h-10 w-10 text-slate-500 mx-auto opacity-40" />
+              <p className="text-sm font-semibold text-white">No Submitted Reports Yet</p>
+              <p className="text-xs text-slate-400">
+                You haven't submitted any hazard reports. Click "Report Hazard" to submit a new photo report.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          allReports.map((report, i) => {
           const statusIdx = statusFlow.indexOf(report.status);
           const photoUrl = getImageUrl(report);
           return (
@@ -140,7 +150,8 @@ export function ReportHistoryPage() {
               </Card>
             </motion.div>
           );
-        })}
+        })
+        )}
       </div>
     </div>
   );
