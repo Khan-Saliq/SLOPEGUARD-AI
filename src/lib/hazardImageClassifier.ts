@@ -102,6 +102,7 @@ async function extractCanvasPixels(
           resolve(null);
           return;
         }
+        ctx.clearRect(0, 0, 384, 384);
         ctx.drawImage(img, 0, 0, 384, 384);
         const base64DataUrl = canvas.toDataURL('image/jpeg', 0.85);
         resolve({ data: ctx.getImageData(0, 0, 384, 384).data, width: 384, height: 384, base64DataUrl });
@@ -115,14 +116,8 @@ async function extractCanvasPixels(
 
     if (typeof imageSource === 'string') {
       img.src = imageSource;
-      if (img.complete && img.naturalWidth > 0) {
-        processLoadedImage();
-      }
     } else {
       img.src = imageSource.src;
-      if (img.complete && img.naturalWidth > 0) {
-        processLoadedImage();
-      }
     }
   });
 }
@@ -133,7 +128,17 @@ function computeHistogram(data: Uint8ClampedArray) {
   for (let i = 0; i < data.length; i += 4) {
     const r = data[i], g = data[i + 1], b = data[i + 2];
     const brightness = (r + g + b) / 3;
-    if (r > 90 && g > 60 && b > 40 && r > g + 10 && (r - b) > 25 && brightness > 60) skin++;
+
+    const rgRatio = r / (g || 1);
+    const rbgRatio = (r - b) / (r - g || 1);
+    const isSkin = (
+      r > 80 && g > 45 && b > 25 &&
+      r > g + 12 && g > b + 8 &&
+      rgRatio >= 1.15 && rgRatio <= 1.45 &&
+      rbgRatio >= 1.25 && rbgRatio <= 1.85
+    );
+
+    if (isSkin) skin++;
     else if (r > 195 && g > 195 && b > 195 && Math.abs(r - g) < 12 && Math.abs(g - b) < 12) paper++;
     else if (g > r + 8 && g > b + 6 && brightness > 20) green++;
     else if (r > 50 && g > 35 && b < 130 && r > b + 8 && brightness > 20 && brightness < 180) earth++;

@@ -169,7 +169,16 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', col
       sampled++;
       const brightness = (r + g + b) / 3;
 
-      if (r > 90 && g > 60 && b > 40 && r > g + 10 && (r - b) > 25 && brightness > 60) skinCount++;
+      const rgRatio = r / (g || 1);
+      const rbgRatio = (r - b) / (r - g || 1);
+      const isSkin = (
+        r > 80 && g > 45 && b > 25 &&
+        r > g + 12 && g > b + 8 &&
+        rgRatio >= 1.15 && rgRatio <= 1.45 &&
+        rbgRatio >= 1.25 && rbgRatio <= 1.85
+      );
+
+      if (isSkin) skinCount++;
       else if (r > 195 && g > 195 && b > 195 && Math.abs(r - g) < 12 && Math.abs(g - b) < 12) paperCount++;
       else if (g > r + 8 && g > b + 6 && brightness > 20) greenCount++;
       else if (r > 50 && g > 35 && b < 130 && r > b + 8 && brightness > 20 && brightness < 180) earthCount++;
