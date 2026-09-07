@@ -16,6 +16,26 @@ export function lookupPlaceName(lat: number, lng: number): {
   population: number;
   infra: number;
 } {
+  // 0. Navi Mumbai, Panvel, Raigad & Mumbai Metropolitan Sector (Maharashtra)
+  if (lat >= 18.8 && lat <= 19.3 && lng >= 72.7 && lng <= 73.4) {
+    return {
+      name: 'Navi Mumbai & Panvel Hill Corridor',
+      area: 'Panvel Kharghar Hill Slope',
+      city: 'Panvel',
+      district: 'Raigad',
+      state: 'Maharashtra',
+      isSafe: true,
+      score: 18,
+      rainfall: 22,
+      soilMoisture: 30,
+      slope: 20,
+      historicalRisk: 15,
+      satelliteIndicator: 12,
+      population: 350000,
+      infra: 85,
+    };
+  }
+
   // 0. North Eastern Region (NER) Major Cities & Vulnerable Districts Check
   if (lat >= 21.5 && lat <= 29.5 && lng >= 88.0 && lng <= 97.5) {
     // Shillong & East Khasi Hills (Meghalaya)

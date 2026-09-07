@@ -108,17 +108,36 @@ export function ReportHazardPage() {
         let state = '';
 
         try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-          if (res.ok) {
-            const data = await res.json();
-            const addr = data.address || {};
-            area = addr.suburb || addr.neighbourhood || addr.village || addr.hamlet || addr.road || addr.quarter || '';
-            city = addr.city || addr.town || addr.municipality || addr.county || '';
-            district = addr.state_district || addr.district || addr.county || '';
-            state = addr.state || '';
+          // 1. Primary: Try BigDataCloud reverse geocoding API (CORS enabled for all origins, keyless)
+          const bdcRes = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
+          );
+          if (bdcRes.ok) {
+            const bdcData = await bdcRes.json();
+            area = bdcData.locality || bdcData.localityInfo?.administrative?.[3]?.name || bdcData.localityInfo?.administrative?.[2]?.name || '';
+            city = bdcData.city || bdcData.locality || bdcData.localityInfo?.administrative?.[1]?.name || '';
+            district = bdcData.principalSubdivision || bdcData.localityInfo?.administrative?.[0]?.name || '';
+            state = bdcData.principalSubdivision || bdcData.countryName || '';
           }
         } catch (e) {
-          console.warn('Reverse geocoding network request failed, utilizing spatial coordinate resolution fallback');
+          // Fall back gracefully
+        }
+
+        // 2. Secondary: If BigDataCloud didn't return complete data, attempt Nominatim
+        if (!area || !city) {
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+            if (res.ok) {
+              const data = await res.json();
+              const addr = data.address || {};
+              area = area || addr.suburb || addr.neighbourhood || addr.village || addr.hamlet || addr.road || addr.quarter || '';
+              city = city || addr.city || addr.town || addr.municipality || addr.county || '';
+              district = district || addr.state_district || addr.district || addr.county || '';
+              state = state || addr.state || '';
+            }
+          } catch (e) {
+            // Silently fall back to spatial lookup matrix
+          }
         }
 
         // Fallback to spatial coordinate resolution matrix
