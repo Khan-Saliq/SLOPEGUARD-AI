@@ -220,14 +220,26 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', col
 
   const totalTerrainRatio = earthRatio + rockRatio + greenRatio + waterRatio;
 
+  const earthP = Math.round(earthRatio * 100);
+  const rockP = Math.round(rockRatio * 100);
+  const greenP = Math.round(greenRatio * 100);
+  const waterP = Math.round(waterRatio * 100);
+  const paperP = Math.round(paperRatio * 100);
+  const skinP = Math.round(skinRatio * 100);
+  const centerSkinP = Math.round(centerSkinRatio * 100);
+  const totalTerrainP = Math.round(totalTerrainRatio * 100);
+
   // 1. Human Portrait / Selfie Rejection: requires high center skin ratio AND center skin ratio exceeding terrain
   if (centerSkinRatio > 0.22 && centerSkinRatio > (totalTerrainRatio * 0.8)) {
+    const portraitConf = Number(Math.min(0.98, Math.max(0.75, (centerSkinRatio * 0.9) + 0.40)).toFixed(2));
+    const selfieConf = Number(Math.min(0.95, Math.max(0.70, (skinRatio * 0.8) + 0.35)).toFixed(2));
+
     return {
       analysisStatus: 'COMPLETED',
       imageRelevance: 'IRRELEVANT',
       detectedLabels: [
-        { label: 'person, human face, portrait', confidence: 0.94 },
-        { label: 'individual selfie photo', confidence: 0.88 }
+        { label: `person, human face, portrait (center skin density: ${centerSkinP}%)`, confidence: portraitConf },
+        { label: `individual selfie photo (skin coverage: ${skinP}%)`, confidence: selfieConf }
       ],
       possibleHazardType: 'IRRELEVANT',
       hazardConfidence: 0.05,
@@ -240,11 +252,13 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', col
 
   // 2. Indoor Document / Object Rejection
   if (paperRatio > 0.35 && paperRatio > totalTerrainRatio) {
+    const docConf = Number(Math.min(0.96, Math.max(0.72, (paperRatio * 0.9) + 0.35)).toFixed(2));
+
     return {
       analysisStatus: 'COMPLETED',
       imageRelevance: 'IRRELEVANT',
       detectedLabels: [
-        { label: 'document, paper, indoor object', confidence: 0.91 }
+        { label: `document, paper, indoor object (white/paper ratio: ${paperP}%)`, confidence: docConf }
       ],
       possibleHazardType: 'IRRELEVANT',
       hazardConfidence: 0.05,
@@ -258,40 +272,54 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', col
   // 3. Natural Terrain Verification (Landslide, Mud, Hill, Mountain, Slope, Rock, Water)
   if (totalTerrainRatio >= 0.18 || (earthRatio + rockRatio) >= 0.12) {
     let hazType = 'POSSIBLE_LANDSLIDE';
-    let label1 = 'mountain slope, cliff';
-    let label2 = 'soil, rock debris zone';
+    const detectedLabels = [];
 
-    if (waterRatio > 0.12 || categoryHint === 'water_seepage') {
+    // Dynamically generate top 2 labels based on highest pixel density
+    if (earthP >= rockP && earthP >= greenP && earthP >= waterP) {
+      const c1 = Number(Math.min(0.96, Math.max(0.68, (earthRatio * 0.8) + 0.45)).toFixed(2));
+      detectedLabels.push({ label: `earth & soil displacement zone (${earthP}% soil coverage)`, confidence: c1 });
+    } else if (rockP >= earthP && rockP >= greenP && rockP >= waterP) {
+      const c1 = Number(Math.min(0.96, Math.max(0.68, (rockRatio * 0.8) + 0.42)).toFixed(2));
+      detectedLabels.push({ label: `rockfall outcrop & cliff face (${rockP}% stone density)`, confidence: c1 });
+    } else if (waterP >= earthP && waterP >= rockP && waterP >= greenP) {
       hazType = 'POSSIBLE_WATER_SEEPAGE';
-      label1 = 'waterbody, stream, river';
-      label2 = 'hydraulic water seepage zone';
-    } else if (categoryHint === 'road_blockage') {
-      hazType = 'POSSIBLE_ROAD_BLOCKAGE';
-      label1 = 'road, highway, obstruction';
-      label2 = 'collapsed slope debris mass';
-    } else if (categoryHint === 'crack') {
-      hazType = 'POSSIBLE_CRACK';
-      label1 = 'structural fissure, crack';
-      label2 = 'soil displacement gradient';
-    } else if (earthRatio > 0.10) {
-      hazType = 'POSSIBLE_LANDSLIDE';
-      label1 = 'earth slope, soil displacement';
-      label2 = 'mudslide debris mass';
-    } else if (rockRatio > 0.10) {
-      hazType = 'POSSIBLE_LANDSLIDE';
-      label1 = 'rockfall outcrop, steep cliff';
-      label2 = 'rock debris zone';
+      const c1 = Number(Math.min(0.96, Math.max(0.68, (waterRatio * 0.8) + 0.40)).toFixed(2));
+      detectedLabels.push({ label: `water seepage & stream channel (${waterP}% liquid surface)`, confidence: c1 });
+    } else {
+      const c1 = Number(Math.min(0.95, Math.max(0.65, (greenRatio * 0.8) + 0.38)).toFixed(2));
+      detectedLabels.push({ label: `vegetated hill slope (${greenP}% foliage canopy)`, confidence: c1 });
     }
+
+    // Secondary Label based on 2nd highest density component
+    if (rockP > 5 && detectedLabels[0].label.indexOf('rockfall') === -1) {
+      const c2 = Number(Math.min(0.92, Math.max(0.55, (rockRatio * 0.7) + 0.38)).toFixed(2));
+      detectedLabels.push({ label: `rock debris & stone fragments (${rockP}% coverage)`, confidence: c2 });
+    } else if (earthP > 5 && detectedLabels[0].label.indexOf('earth & soil') === -1) {
+      const c2 = Number(Math.min(0.92, Math.max(0.55, (earthRatio * 0.7) + 0.40)).toFixed(2));
+      detectedLabels.push({ label: `mud & loose earth scarp (${earthP}% coverage)`, confidence: c2 });
+    } else if (greenP > 5 && detectedLabels[0].label.indexOf('vegetated') === -1) {
+      const c2 = Number(Math.min(0.90, Math.max(0.50, (greenRatio * 0.7) + 0.32)).toFixed(2));
+      detectedLabels.push({ label: `slope vegetation canopy (${greenP}% coverage)`, confidence: c2 });
+    } else if (waterP > 5 && detectedLabels[0].label.indexOf('water seepage') === -1) {
+      const c2 = Number(Math.min(0.88, Math.max(0.48, (waterRatio * 0.7) + 0.30)).toFixed(2));
+      detectedLabels.push({ label: `muddy water flow / runoff (${waterP}% coverage)`, confidence: c2 });
+    } else {
+      const c2 = Number(Math.min(0.85, Math.max(0.50, (totalTerrainRatio * 0.7) + 0.25)).toFixed(2));
+      detectedLabels.push({ label: `steep geological gradient (${totalTerrainP}% terrain)`, confidence: c2 });
+    }
+
+    if (categoryHint === 'water_seepage' && hazType === 'POSSIBLE_LANDSLIDE') hazType = 'POSSIBLE_WATER_SEEPAGE';
+    else if (categoryHint === 'road_blockage') hazType = 'POSSIBLE_ROAD_BLOCKAGE';
+    else if (categoryHint === 'crack') hazType = 'POSSIBLE_CRACK';
+
+    const calculatedHazardConfidence = Number(Math.min(0.98, Math.max(0.62, (totalTerrainRatio * 0.85) + 0.35)).toFixed(2));
 
     return {
       analysisStatus: 'COMPLETED',
       imageRelevance: 'RELEVANT',
-      detectedLabels: [
-        { label: label1, confidence: 0.89 },
-        { label: label2, confidence: 0.81 }
-      ],
+      detectedLabels,
       possibleHazardType: hazType,
-      hazardConfidence: 0.85,
+      hazardConfidence: calculatedHazardConfidence,
       requiresHumanVerification: true,
       modelName: `${modelName} (vision-classifier)`,
       processedAt,
@@ -304,7 +332,7 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', col
     analysisStatus: 'COMPLETED',
     imageRelevance: 'IRRELEVANT',
     detectedLabels: [
-      { label: 'No mountain, hill, slope, rock, or water area detected', confidence: 0.05 }
+      { label: `No mountain, hill, slope, rock, or water area detected (terrain density: ${totalTerrainP}%)`, confidence: 0.05 }
     ],
     possibleHazardType: 'IRRELEVANT',
     hazardConfidence: 0.05,
