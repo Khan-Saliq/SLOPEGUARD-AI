@@ -517,7 +517,7 @@ app.post('/api/reports', authMiddleware, async (req, res) => {
 // AI Media Inspection Endpoint using Backend Hugging Face Vision Service
 app.post('/api/inspect-media', optionalAuthMiddleware, async (req, res) => {
   try {
-    const { imageUrl, category, captureMetadata } = req.body;
+    const { imageUrl, category, captureMetadata, colorHistogram } = req.body;
 
     if (!imageUrl) {
       return res.status(400).json({ error: 'Missing imageUrl' });
@@ -526,7 +526,7 @@ app.post('/api/inspect-media', optionalAuthMiddleware, async (req, res) => {
     appendLog('inspect-media', { userId: req.user.id, category, hasMetadata: !!captureMetadata });
 
     // Call Backend Hugging Face Image Analysis Service
-    const hfResult = await analyzeImageWithHuggingFace(imageUrl, category);
+    const hfResult = await analyzeImageWithHuggingFace(imageUrl, category, colorHistogram);
 
     res.json({
       success: true,

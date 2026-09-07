@@ -127,12 +127,29 @@ async function extractCanvasPixels(
   });
 }
 
+function computeHistogram(data: Uint8ClampedArray) {
+  let skin = 0, paper = 0, green = 0, earth = 0, rock = 0, water = 0;
+  const total = data.length / 4;
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i], g = data[i + 1], b = data[i + 2];
+    const brightness = (r + g + b) / 3;
+    if (r > 90 && g > 60 && b > 40 && r > g + 10 && (r - b) > 25 && brightness > 60) skin++;
+    else if (r > 195 && g > 195 && b > 195 && Math.abs(r - g) < 12 && Math.abs(g - b) < 12) paper++;
+    else if (g > r + 8 && g > b + 6 && brightness > 20) green++;
+    else if (r > 50 && g > 35 && b < 130 && r > b + 8 && brightness > 20 && brightness < 180) earth++;
+    else if (Math.abs(r - g) < 20 && Math.abs(g - b) < 20 && brightness > 25 && brightness < 215) rock++;
+    else if (b > r + 25 && b > g + 15 && b > 80 && r < 140) water++;
+  }
+  return { total, skin, paper, green, earth, rock, water };
+}
+
 /**
  * Call Backend Hugging Face Image Analysis Endpoint
  */
 async function tryBackendHuggingFaceInspection(
   imageUrl: string,
-  categoryHint: string
+  categoryHint: string,
+  colorHistogram?: ReturnType<typeof computeHistogram>
 ): Promise<MLInspectionResult | null> {
   try {
     const token = localStorage.getItem('token');
@@ -145,6 +162,7 @@ async function tryBackendHuggingFaceInspection(
       body: JSON.stringify({
         imageUrl,
         category: categoryHint,
+        colorHistogram,
       }),
     });
 
@@ -189,9 +207,10 @@ export async function classifyHazardImage(
 ): Promise<MLInspectionResult> {
   const pixelResult = await extractCanvasPixels(imageSource);
 
-  // 1. Send media image to Backend Hugging Face Vision API
+  // 1. Send media image & color histogram to Backend Hugging Face Vision API
   if (pixelResult?.base64DataUrl) {
-    const backendResult = await tryBackendHuggingFaceInspection(pixelResult.base64DataUrl, categoryHint);
+    const colorHistogram = pixelResult.data ? computeHistogram(pixelResult.data) : undefined;
+    const backendResult = await tryBackendHuggingFaceInspection(pixelResult.base64DataUrl, categoryHint, colorHistogram);
     if (backendResult) {
       return backendResult;
     }

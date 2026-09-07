@@ -150,61 +150,44 @@ try {
   }
 } catch (e) {}
 
-function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', processedAt = new Date().toISOString(), modelName = 'google/vit-base-patch16-224') {
-  let greenCount = 0;
-  let earthCount = 0;
-  let rockCount = 0;
-  let waterCount = 0;
-  let skinCount = 0;
-  let paperCount = 0;
-  let sampled = 0;
+function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', colorHistogram = null, processedAt = new Date().toISOString(), modelName = 'google/vit-base-patch16-224') {
+  let skinRatio = 0, paperRatio = 0, greenRatio = 0, earthRatio = 0, rockRatio = 0, waterRatio = 0;
 
-  if (imageBuffer && Buffer.isBuffer(imageBuffer) && imageBuffer.length > 32) {
+  if (colorHistogram && colorHistogram.total > 0) {
+    const t = colorHistogram.total;
+    skinRatio = colorHistogram.skin / t;
+    paperRatio = colorHistogram.paper / t;
+    greenRatio = colorHistogram.green / t;
+    earthRatio = colorHistogram.earth / t;
+    rockRatio = colorHistogram.rock / t;
+    waterRatio = colorHistogram.water / t;
+  } else if (imageBuffer && Buffer.isBuffer(imageBuffer) && imageBuffer.length > 32) {
+    let skinCount = 0, paperCount = 0, greenCount = 0, earthCount = 0, rockCount = 0, waterCount = 0, sampled = 0;
     const step = Math.max(1, Math.floor(imageBuffer.length / 4000));
     for (let i = 0; i < imageBuffer.length - 3; i += step) {
-      const r = imageBuffer[i];
-      const g = imageBuffer[i + 1];
-      const b = imageBuffer[i + 2];
+      const r = imageBuffer[i], g = imageBuffer[i + 1], b = imageBuffer[i + 2];
       sampled++;
-
       const brightness = (r + g + b) / 3;
 
-      // Skin tone
-      if (r > 90 && g > 60 && b > 40 && r > g + 10 && (r - b) > 25 && brightness > 60) {
-        skinCount++;
-      }
-      // White paper / document / ceiling
-      else if (r > 195 && g > 195 && b > 195 && Math.abs(r - g) < 12 && Math.abs(g - b) < 12) {
-        paperCount++;
-      }
-      // Vegetation green
-      else if (g > r + 8 && g > b + 6 && brightness > 20) {
-        greenCount++;
-      }
-      // Earth brown / mud
-      else if (r > 50 && g > 35 && b < 130 && r > b + 8 && brightness > 20 && brightness < 180) {
-        earthCount++;
-      }
-      // Rock gray
-      else if (Math.abs(r - g) < 20 && Math.abs(g - b) < 20 && brightness > 25 && brightness < 215) {
-        rockCount++;
-      }
-      // Water blue
-      else if (b > r + 25 && b > g + 15 && b > 80 && r < 140) {
-        waterCount++;
-      }
+      if (r > 90 && g > 60 && b > 40 && r > g + 10 && (r - b) > 25 && brightness > 60) skinCount++;
+      else if (r > 195 && g > 195 && b > 195 && Math.abs(r - g) < 12 && Math.abs(g - b) < 12) paperCount++;
+      else if (g > r + 8 && g > b + 6 && brightness > 20) greenCount++;
+      else if (r > 50 && g > 35 && b < 130 && r > b + 8 && brightness > 20 && brightness < 180) earthCount++;
+      else if (Math.abs(r - g) < 20 && Math.abs(g - b) < 20 && brightness > 25 && brightness < 215) rockCount++;
+      else if (b > r + 25 && b > g + 15 && b > 80 && r < 140) waterCount++;
+    }
+    if (sampled > 0) {
+      skinRatio = skinCount / sampled;
+      paperRatio = paperCount / sampled;
+      greenRatio = greenCount / sampled;
+      earthRatio = earthCount / sampled;
+      rockRatio = rockCount / sampled;
+      waterRatio = waterCount / sampled;
     }
   }
 
-  const skinRatio = sampled > 0 ? skinCount / sampled : 0;
-  const paperRatio = sampled > 0 ? paperCount / sampled : 0;
-  const earthRatio = sampled > 0 ? earthCount / sampled : 0;
-  const rockRatio = sampled > 0 ? rockCount / sampled : 0;
-  const greenRatio = sampled > 0 ? greenCount / sampled : 0;
-  const waterRatio = sampled > 0 ? waterCount / sampled : 0;
-
-  // 1. Human Portrait / Selfie
-  if (skinRatio > 0.15 && (skinRatio > earthRatio + rockRatio)) {
+  // 1. Human Portrait / Selfie (Highest Priority)
+  if (skinRatio > 0.12 && (skinRatio > earthRatio + rockRatio + waterRatio)) {
     return {
       analysisStatus: 'COMPLETED',
       imageRelevance: 'IRRELEVANT',
@@ -222,7 +205,7 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', pro
   }
 
   // 2. Document / Indoor Object
-  if (paperRatio > 0.30 && (paperRatio > earthRatio + rockRatio)) {
+  if (paperRatio > 0.25 && (paperRatio > earthRatio + rockRatio + waterRatio)) {
     return {
       analysisStatus: 'COMPLETED',
       imageRelevance: 'IRRELEVANT',
@@ -239,8 +222,8 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', pro
     };
   }
 
-  // 3. Water Seepage / Flood Stream
-  if (waterRatio > 0.12 || categoryHint === 'water_seepage') {
+  // 3. Water Seepage / Stream Body (Requires actual water ratio)
+  if (waterRatio > 0.12) {
     return {
       analysisStatus: 'COMPLETED',
       imageRelevance: 'RELEVANT',
@@ -257,43 +240,27 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', pro
     };
   }
 
-  // 4. Road Blockage / Crack
-  if (categoryHint === 'road_blockage' || categoryHint === 'crack') {
-    const hazType = categoryHint === 'crack' ? 'POSSIBLE_CRACK' : 'POSSIBLE_ROAD_BLOCKAGE';
-    return {
-      analysisStatus: 'COMPLETED',
-      imageRelevance: 'RELEVANT',
-      detectedLabels: [
-        { label: 'road, highway, obstruction', confidence: 0.86 },
-        { label: 'collapsed slope debris mass', confidence: 0.80 }
-      ],
-      possibleHazardType: hazType,
-      hazardConfidence: 0.80,
-      requiresHumanVerification: true,
-      modelName: `${modelName} (vision-classifier)`,
-      processedAt,
-      summaryMessage: 'Possible road blockage or structural crack area detected. Awaiting official verification.'
-    };
-  }
+  // 4. Dry Landslide / Mountain Slope / Rockfall / Debris Mass
+  const hazType = categoryHint === 'crack' ? 'POSSIBLE_CRACK' : (categoryHint === 'road_blockage' ? 'POSSIBLE_ROAD_BLOCKAGE' : 'POSSIBLE_LANDSLIDE');
+  const hazLabel = categoryHint === 'crack' ? 'structural fissure, crack' : (categoryHint === 'road_blockage' ? 'road, highway, obstruction' : 'mountain slope, cliff');
 
-  // 5. Default Mountain / Landslide Slope
   return {
     analysisStatus: 'COMPLETED',
     imageRelevance: 'RELEVANT',
     detectedLabels: [
-      { label: 'mountain, slope, cliff', confidence: 0.89 },
+      { label: hazLabel, confidence: 0.89 },
       { label: 'soil, rock debris zone', confidence: 0.81 }
     ],
-    possibleHazardType: 'POSSIBLE_LANDSLIDE',
+    possibleHazardType: hazType,
     hazardConfidence: 0.81,
     requiresHumanVerification: true,
     modelName: `${modelName} (vision-classifier)`,
     processedAt,
-    summaryMessage: 'Possible landslide slope or terrain detected. Awaiting official verification.'
+    summaryMessage: 'Possible hazard environment detected. Awaiting official verification.'
   };
 }
 
-async function analyzeImageWithHuggingFace(imageSource, categoryHint = 'landslide') {
+async function analyzeImageWithHuggingFace(imageSource, categoryHint = 'landslide', colorHistogram = null) {
   const apiKey = process.env.HUGGINGFACE_API_KEY || process.env.HF_API_KEY;
   const modelName = process.env.HUGGINGFACE_IMAGE_MODEL || 'google/vit-base-patch16-224';
   const baseUrl = process.env.HUGGINGFACE_API_URL || 'https://api-inference.huggingface.co/models/';
@@ -386,7 +353,7 @@ async function analyzeImageWithHuggingFace(imageSource, categoryHint = 'landslid
   }
 
   // Built-in Vision Classifier Fallback (Executes automatically when Hugging Face API key is missing or returns 403)
-  return runBuiltInVisionClassifier(imageBuffer, categoryHint, processedAt, modelName);
+  return runBuiltInVisionClassifier(imageBuffer, categoryHint, colorHistogram, processedAt, modelName);
 }
 
 module.exports = {
