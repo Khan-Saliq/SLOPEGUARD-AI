@@ -502,6 +502,7 @@ interface MonitorDataContextType {
   refreshEvacuationRoutes: () => Promise<void>;
   refreshReports: () => Promise<void>;
   deleteReport: (id: string) => Promise<boolean>;
+  addAlert: (alertInput: Partial<Alert>) => Promise<Alert>;
   acknowledgeAlert: (id: string) => void;
   submitReport: (input: SubmitReportInput) => CitizenReport | Promise<any> | null;
   syncPendingReports: () => number;
@@ -834,6 +835,48 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
     return true;
   }, [token]);
 
+  const addAlert = useCallback(
+    async (alertInput: Partial<Alert>): Promise<Alert> => {
+      const alertObj: Alert = {
+        id: alertInput.id || `alert-bc-${Date.now()}`,
+        title: alertInput.title || 'EMERGENCY HAZARD WARNING',
+        message: alertInput.message || 'Early warning alert broadcasted by Command Center',
+        riskLevel: alertInput.riskLevel || 'critical',
+        district: alertInput.district || 'General Sector',
+        location: alertInput.location || {
+          lat: 25.57,
+          lng: 91.88,
+          area: alertInput.district || 'General Sector',
+          city: alertInput.district || 'Shillong',
+          district: alertInput.district || 'East Khasi Hills',
+          state: (alertInput.location as any)?.state || 'Meghalaya',
+        },
+        timestamp: new Date().toISOString(),
+        acknowledged: false,
+        dataSource: alertInput.dataSource || 'sensor',
+        affectedRoads: alertInput.affectedRoads || [],
+        affectedVillages: alertInput.affectedVillages || [],
+      };
+
+      setAlerts(prev => [alertObj, ...prev.filter(a => a.id !== alertObj.id)]);
+
+      if (token) {
+        try {
+          await fetch('/api/alerts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify(alertObj),
+          });
+        } catch (err) {
+          console.error('Failed to post alert to server:', err);
+        }
+      }
+
+      return alertObj;
+    },
+    [token],
+  );
+
   const value = useMemo(
     () => ({
       riskZones,
@@ -860,6 +903,7 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
       refreshEvacuationRoutes,
       refreshReports,
       deleteReport,
+      addAlert,
       acknowledgeAlert,
       submitReport,
       syncPendingReports,
@@ -894,6 +938,7 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
       refreshEvacuationRoutes,
       refreshReports,
       deleteReport,
+      addAlert,
       acknowledgeAlert,
       submitReport,
       syncPendingReports,

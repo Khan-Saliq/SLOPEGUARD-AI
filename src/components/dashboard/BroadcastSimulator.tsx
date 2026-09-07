@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 import { RiskBadge } from '../ui/Badge';
 import { Radio, Send, CheckCircle2, ShieldAlert, Sparkles } from 'lucide-react';
 import type { RiskLevel } from '../../types';
+import { useMonitorData } from '../../hooks/useMonitorData';
 
 const MULTILINGUAL_TEMPLATES: Record<string, Record<RiskLevel, string>> = {
   en: {
@@ -39,22 +40,66 @@ const MULTILINGUAL_TEMPLATES: Record<string, Record<RiskLevel, string>> = {
   },
 };
 
+const DISTRICT_METADATA: Record<string, { state: string; lat: number; lng: number }> = {
+  'East Khasi Hills': { state: 'Meghalaya', lat: 25.57, lng: 91.88 },
+  'Kamrup Metropolitan': { state: 'Assam', lat: 26.14, lng: 91.73 },
+  'Champhai': { state: 'Mizoram', lat: 23.47, lng: 93.32 },
+  'Darjeeling': { state: 'West Bengal', lat: 27.04, lng: 88.26 },
+  'Shimla & Kinnaur': { state: 'Himachal Pradesh', lat: 31.10, lng: 77.17 },
+  'Gangtok': { state: 'Sikkim', lat: 27.33, lng: 88.61 },
+  'Kohima': { state: 'Nagaland', lat: 25.67, lng: 94.10 },
+  'Papum Pare': { state: 'Arunachal Pradesh', lat: 27.10, lng: 93.62 },
+  'Imphal West': { state: 'Manipur', lat: 24.81, lng: 93.93 },
+  'Rudraprayag': { state: 'Uttarakhand', lat: 30.73, lng: 79.06 },
+  'Wayanad': { state: 'Kerala', lat: 11.68, lng: 76.13 },
+};
+
 export function BroadcastSimulator() {
+  const { addAlert } = useMonitorData();
   const [selectedDistrict, setSelectedDistrict] = useState('East Khasi Hills');
   const [selectedLevel, setSelectedLevel] = useState<RiskLevel>('critical');
   const [selectedLang, setSelectedLang] = useState('en');
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [lastBroadcast, setLastBroadcast] = useState<{ time: string; district: string } | null>(null);
 
-  const handleTriggerBroadcast = () => {
+  const handleTriggerBroadcast = async () => {
     setIsBroadcasting(true);
+
+    const meta = DISTRICT_METADATA[selectedDistrict] || { state: 'Meghalaya', lat: 25.57, lng: 91.88 };
+    const msg = MULTILINGUAL_TEMPLATES[selectedLang][selectedLevel].replace('{district}', selectedDistrict);
+
+    try {
+      await addAlert({
+        id: `alert-bc-${Date.now()}`,
+        title: `EMERGENCY ALERT: ${selectedLevel.toUpperCase()} — ${selectedDistrict}`,
+        message: msg,
+        riskLevel: selectedLevel,
+        district: selectedDistrict,
+        location: {
+          lat: meta.lat,
+          lng: meta.lng,
+          area: selectedDistrict,
+          city: selectedDistrict,
+          district: selectedDistrict,
+          state: meta.state,
+        },
+        timestamp: new Date().toISOString(),
+        acknowledged: false,
+        dataSource: 'sensor',
+        affectedRoads: [`Primary Highway Corridor in ${selectedDistrict}`],
+        affectedVillages: [`${selectedDistrict} Hill Communities & Settlements`],
+      });
+    } catch (e) {
+      console.error('Failed to trigger broadcast alert:', e);
+    }
+
     setTimeout(() => {
       setIsBroadcasting(false);
       setLastBroadcast({
         time: new Date().toLocaleTimeString(),
         district: selectedDistrict,
       });
-    }, 1200);
+    }, 600);
   };
 
   const currentMessageTemplate = MULTILINGUAL_TEMPLATES[selectedLang][selectedLevel].replace('{district}', selectedDistrict);

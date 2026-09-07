@@ -979,6 +979,37 @@ app.patch('/api/evacuation-routes/:id/suspend', authMiddleware, requireRole('aut
   }
 });
 
+// Alerts Management API
+app.get('/api/alerts', optionalAuthMiddleware, async (req, res) => {
+  try {
+    const alerts = (await getDb().collection('alerts').find().sort({ timestamp: -1 }).toArray()) || [];
+    res.json(alerts);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch alerts' });
+  }
+});
+
+app.post('/api/alerts', authMiddleware, requireRole('authority', 'admin'), async (req, res) => {
+  try {
+    const alert = {
+      ...req.body,
+      id: req.body.id || `alert-bc-${nanoid()}`,
+      timestamp: req.body.timestamp || new Date().toISOString(),
+      acknowledged: false,
+    };
+
+    await getDb().collection('alerts').insertOne(alert);
+
+    // Broadcast real-time SSE alert update to all connected users
+    const users = await getDb().collection('users').find({}).toArray();
+    users.forEach((u) => sendSse(u.id || u._id, 'alert', alert));
+
+    res.json(alert);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to broadcast alert', details: err.message });
+  }
+});
+
 // 10. Live Map State Updates API
 app.get('/api/map/updates', optionalAuthMiddleware, async (req, res) => {
   try {
