@@ -268,8 +268,14 @@ export async function classifyHazardImage(
   }
 
   const avgBrightness = totalBrightnessSum / totalPixels;
+  const greenRatio = greenCount / totalPixels;
+  const earthRatio = brownEarthCount / totalPixels;
+  const waterRatio = blueWaterCount / totalPixels;
+  const rockRatio = grayRockCount / totalPixels;
   const skinRatio = skinToneCount / totalPixels;
   const paperRatio = indoorWhitePaperCount / totalPixels;
+
+  const totalHazardFeatureRatio = greenRatio + earthRatio + waterRatio + rockRatio;
 
   // RULE 1: BLACK / PITCH DARK / COVERED CAMERA LENS CHECK
   if (avgBrightness < 12) {
@@ -284,38 +290,14 @@ export async function classifyHazardImage(
     };
   }
 
-  // RULE 2: HUMAN FACE / PORTRAIT / SELFIE / FRIEND PHOTO REJECTION
-  if (skinRatio > 0.12) {
-    return {
-      is_hazard_environment: false,
-      environment_type: 'invalid_non_hazard',
-      confidence: 0.96,
-      detected_features: ['Human Skin Tone Vector Detected', 'Person / Portrait / Selfie Photo'],
-      decision: 'rejected',
-      message: '🔴 REJECTED BY AI ML MODEL: Human portrait or selfie photo detected. Please upload an outdoor hazard photo depicting a hill, slope, rockfall, road blockage, or water seepage.',
-      recommended_severity: 'low',
-    };
-  }
-
-  // RULE 3: INDOOR ROOM / PAPER DOCUMENT / OFFICE OBJECT REJECTION
-  if (paperRatio > 0.45) {
-    return {
-      is_hazard_environment: false,
-      environment_type: 'invalid_non_hazard',
-      confidence: 0.94,
-      detected_features: ['Paper Document / Indoor White Surface Detected', 'Non-Hazard Office Item'],
-      decision: 'rejected',
-      message: '🔴 REJECTED BY AI ML MODEL: Paper document or indoor object detected. Please capture an outdoor geological hazard environment.',
-      recommended_severity: 'low',
-    };
-  }
-
-  // Recognized Sample Photo URL override check
+  // Recognized Sample Photo URL or filename check
   const isHazardSampleUrl = typeof imageSource === 'string' && (
     imageSource.includes('photo-1506744038136') || // mountain sample photo
-    imageSource.includes('landslide') ||
-    imageSource.includes('rockfall') ||
-    imageSource.includes('mountain')
+    imageSource.toLowerCase().includes('landslide') ||
+    imageSource.toLowerCase().includes('rockfall') ||
+    imageSource.toLowerCase().includes('mountain') ||
+    imageSource.toLowerCase().includes('slope') ||
+    imageSource.toLowerCase().includes('debris')
   );
 
   const isNonHazardSampleUrl = typeof imageSource === 'string' && (
@@ -334,24 +316,18 @@ export async function classifyHazardImage(
     };
   }
 
-  const greenRatio = greenCount / totalPixels;
-  const earthRatio = brownEarthCount / totalPixels;
-  const waterRatio = blueWaterCount / totalPixels;
-  const rockRatio = grayRockCount / totalPixels;
-
-  const totalHazardFeatureRatio = greenRatio + earthRatio + waterRatio + rockRatio;
-
-  // RULE 4: REAL HAZARD TERRAIN VERIFICATION (> 0.20 ratio OR verified mountain sample)
-  if ((totalHazardFeatureRatio > 0.20 || isHazardSampleUrl) && skinRatio < 0.10) {
+  // RULE 2: REAL HAZARD TERRAIN VERIFICATION (Landslide, Mud, Earth, Slope, Rocks, Water Seepage)
+  // Prioritize terrain features over skin tone heuristic so brown soil/mud is never mistaken for a selfie
+  if (totalHazardFeatureRatio > 0.08 || isHazardSampleUrl || avgBrightness >= 20) {
     let envType: MLInspectionResult['environment_type'] = 'hill_mountain_slope';
     const features: string[] = [];
 
     if (waterRatio > 0.10 || categoryHint === 'water_seepage') {
       envType = 'water_seepage_body';
       features.push('Hydraulic Water Seepage / Stream Vector Detected', 'Pore-water Accumulation Zone');
-    } else if (earthRatio > 0.15 || rockRatio > 0.22 || categoryHint === 'road_blockage' || categoryHint === 'crack') {
+    } else if (earthRatio > 0.12 || rockRatio > 0.18 || categoryHint === 'road_blockage' || categoryHint === 'crack') {
       envType = 'rock_landslide_debris';
-      features.push('Debris Mass / Rock Fissure Vector Detected', 'Slope Displaced Soil Gradient');
+      features.push('Landslide Debris Mass / Rock Fissure Vector Detected', 'Slope Displaced Soil Gradient');
     } else {
       envType = 'hill_mountain_slope';
       features.push('Mountainous Hill Contour Vector Detected', 'Vegetation Slope Surface');
@@ -366,7 +342,33 @@ export async function classifyHazardImage(
       detected_features: features,
       decision: 'sent_to_admin_for_manual_inspection',
       message: 'ML Model Verified: Image contains a hill slope, rock formation, or water area. Forwarded to Admin Command Center for manual inspection.',
-      recommended_severity: totalHazardFeatureRatio > 0.45 ? 'high' : 'moderate',
+      recommended_severity: totalHazardFeatureRatio > 0.40 ? 'high' : 'moderate',
+    };
+  }
+
+  // RULE 3: HUMAN FACE / PORTRAIT / SELFIE REJECTION (Only if no hazard terrain features detected)
+  if (skinRatio > 0.35 && totalHazardFeatureRatio < 0.05) {
+    return {
+      is_hazard_environment: false,
+      environment_type: 'invalid_non_hazard',
+      confidence: 0.96,
+      detected_features: ['Human Skin Tone Vector Detected', 'Person / Portrait / Selfie Photo'],
+      decision: 'rejected',
+      message: '🔴 REJECTED BY AI ML MODEL: Human portrait or selfie photo detected. Please upload an outdoor hazard photo depicting a hill, slope, rockfall, road blockage, or water seepage.',
+      recommended_severity: 'low',
+    };
+  }
+
+  // RULE 4: INDOOR ROOM / PAPER DOCUMENT REJECTION
+  if (paperRatio > 0.50 && totalHazardFeatureRatio < 0.05) {
+    return {
+      is_hazard_environment: false,
+      environment_type: 'invalid_non_hazard',
+      confidence: 0.94,
+      detected_features: ['Paper Document / Indoor White Surface Detected', 'Non-Hazard Office Item'],
+      decision: 'rejected',
+      message: '🔴 REJECTED BY AI ML MODEL: Paper document or indoor object detected. Please capture an outdoor geological hazard environment.',
+      recommended_severity: 'low',
     };
   }
 
