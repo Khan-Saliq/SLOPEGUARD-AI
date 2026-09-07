@@ -484,10 +484,29 @@ export function ReportHazardPage() {
                         </div>
                       </div>
 
-                      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 flex items-start gap-2">
-                        <Info className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
-                        <div className="text-xs text-blue-300">
-                          <strong>AI Computer Vision Model:</strong> Analyzes whether photos contain a hill, slope, rock formation, or water seepage zone. Non-hazard photos will be automatically rejected.
+                      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 space-y-2">
+                        <div className="flex items-start gap-2 text-xs text-blue-300">
+                          <Info className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
+                          <div>
+                            <strong>AI Computer Vision Model:</strong> Analyzes whether photos depict a real hill, slope, rock formation, or water seepage hazard. Non-hazard photos (human faces, selfies, portraits, indoor rooms, paper documents, dark photos) are automatically rejected.
+                          </div>
+                        </div>
+
+                        <div className="pt-1 flex items-center gap-2">
+                          <span className="text-[10px] font-mono text-slate-400 shrink-0">Optional Vision AI API Key:</span>
+                          <input
+                            type="password"
+                            placeholder="Enter Gemini / Vision API Key..."
+                            defaultValue={localStorage.getItem('gemini_api_key') || ''}
+                            onChange={(e) => {
+                              if (e.target.value.trim()) {
+                                localStorage.setItem('gemini_api_key', e.target.value.trim());
+                              } else {
+                                localStorage.removeItem('gemini_api_key');
+                              }
+                            }}
+                            className="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1 text-[11px] text-white placeholder:text-slate-500 outline-none focus:border-accent-bright font-mono"
+                          />
                         </div>
                       </div>
                     </div>
