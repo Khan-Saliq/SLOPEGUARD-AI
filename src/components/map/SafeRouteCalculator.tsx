@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   AlertOctagon,
   Send,
+  RefreshCw,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -59,6 +60,12 @@ export function SafeRouteCalculator({ isAdmin = false, onSelectRoute }: SafeRout
     hospitals,
     evacuationRoutes,
     riskZones,
+    isLoading,
+    refreshRiskZones,
+    refreshRoads,
+    refreshShelters,
+    refreshHospitals,
+    refreshEvacuationRoutes,
     updateRoadStatus,
     publishEvacuationRoute,
   } = useMonitorData();
@@ -294,6 +301,19 @@ export function SafeRouteCalculator({ isAdmin = false, onSelectRoute }: SafeRout
     setTimeout(() => setCopiedMessage(null), 3000);
   };
 
+  const handleSyncLiveTelemetry = async () => {
+    await Promise.all([
+      refreshRiskZones(),
+      refreshRoads(),
+      refreshShelters(),
+      refreshHospitals(),
+      refreshEvacuationRoutes(),
+    ]);
+    if (originPoint && destPoint) {
+      runRouteCalculation(originPoint, destPoint);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Header Card */}
@@ -304,7 +324,17 @@ export function SafeRouteCalculator({ isAdmin = false, onSelectRoute }: SafeRout
               <Navigation className="h-5 w-5 text-accent-bright" />
               Real-Time Evacuation Route Planner
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={handleSyncLiveTelemetry}
+                disabled={isLoading}
+                className="text-[10px] font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2.5 py-1 rounded-full flex items-center gap-1 font-semibold hover:bg-emerald-500/30 transition-colors"
+              >
+                {isLoading ? <Loader2 className="h-3 w-3 animate-spin text-emerald-400" /> : <RefreshCw className="h-3 w-3 text-emerald-400" />}
+                🔴 LIVE TELEMETRY STREAM
+              </button>
+
               {isUserAdmin && (
                 <span className="text-[10px] font-mono bg-red-500/20 text-red-400 border border-red-500/40 px-2.5 py-1 rounded-full flex items-center gap-1 font-semibold">
                   <ShieldAlert className="h-3 w-3" /> ADMIN OPERATIONAL MODE

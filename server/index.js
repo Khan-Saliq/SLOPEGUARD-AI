@@ -588,6 +588,31 @@ app.post('/api/reports', authMiddleware, async (req, res) => {
   };
 
   const created = await insertReportDoc(report);
+
+  // Real-time Road Blockage Auto-Registration for hazard reports
+  if (['road_blockage', 'landslide', 'crack', 'debris'].includes(category) && location && location.lat && location.lng) {
+    try {
+      const roadBlock = {
+        id: `road-live-${Date.now()}`,
+        name: `Blocked Section near ${location.area || location.district || 'Hazard Location'}`,
+        district: location.district || 'General',
+        status: category === 'crack' ? 'damaged' : 'blocked',
+        riskLevel: severity || 'critical',
+        lastReport: `LIVE REPORT (${category.toUpperCase().replace('_', ' ')}): ${description.slice(0, 70)}`,
+        coordinates: [
+          [location.lat, location.lng],
+          [location.lat + 0.004, location.lng + 0.004]
+        ],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      await getDb().collection('roads').insertOne(roadBlock);
+      console.log('⚡ Real-Time Road Blockage Registered:', roadBlock.name);
+    } catch (e) {
+      console.warn('Road blockage auto-registration notice:', e.message);
+    }
+  }
+
   res.json(created);
 });
 
@@ -935,8 +960,8 @@ app.post('/api/predict/location', authMiddleware, async (req, res) => {
   }
 });
 
-// Refresh all risk zones with real data and ML predictions
-app.post('/api/risk-zones/refresh', authMiddleware, requireRole('authority'), async (req, res) => {
+// Refresh all risk zones with real telemetry data and ML predictions
+app.post('/api/risk-zones/refresh', optionalAuthMiddleware, async (req, res) => {
   try {
     appendLog('refresh-risk-zones-start');
 

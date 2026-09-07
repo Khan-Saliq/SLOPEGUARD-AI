@@ -697,10 +697,11 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
 
   // Refresh risk zones with real environmental data and ML predictions
   const refreshRiskZones = useCallback(async () => {
-    if (!token || !user || !['authority', 'super_admin'].includes(user.role)) return;
     setIsLoading(true);
     try {
-      const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      
       const response = await fetch('/api/risk-zones/refresh', { method: 'POST', headers });
 
       if (!response.ok) {
@@ -744,11 +745,7 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
     refreshRoads();
     refreshShelters();
     refreshHospitals();
-    refreshEvacuationRoutes();
-
-    if (token && ['authority', 'super_admin'].includes(user?.role || '')) {
-      refreshRiskZones();
-    }
+    refreshRiskZones();
   }, [token, user, refreshRiskZones, refreshRoads, refreshShelters, refreshHospitals, refreshEvacuationRoutes]);
 
   const updateRoadStatus = useCallback(async (roadId: string, status: RoadStatus, reason?: string) => {
