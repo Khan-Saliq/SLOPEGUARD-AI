@@ -635,7 +635,7 @@ export function SafeRouteCalculator({ isAdmin = false, onSelectRoute }: SafeRout
                   <AlertTriangle className="w-4 h-4 shrink-0" /> Active Route Hazard Advisories
                 </span>
                 <ul className="space-y-1 text-amber-200 text-[11px] list-disc list-inside">
-                  {activeRouteResult.warnings.map((w, i) => (
+                  {Array.from(new Set(activeRouteResult.warnings)).map((w, i) => (
                     <li key={i}>{w}</li>
                   ))}
                 </ul>

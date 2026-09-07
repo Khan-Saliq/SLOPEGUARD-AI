@@ -158,6 +158,7 @@ function analyzeRouteHazards(route: RouteResult, hazards: HazardZone[]): {
 } {
   const warnings: string[] = [];
   const affectedSegments: number[] = [];
+  const processedHazardNames = new Set<string>();
   let warningCount = 0;
   let criticalCount = 0;
 
@@ -171,11 +172,13 @@ function analyzeRouteHazards(route: RouteResult, hazards: HazardZone[]): {
       if (distance <= hazard.radius) {
         affectedSegments.push(index);
 
+        if (!processedHazardNames.has(hazard.name)) {
+          processedHazardNames.add(hazard.name);
+          warnings.push(`⚠️ Route passes near ${hazard.severity || 'high'} risk zone: ${hazard.name}`);
+        }
+
         if (hazard.severity === 'critical' || hazard.severity === 'high') {
           criticalCount++;
-          if (!warnings.includes(hazard.name)) {
-            warnings.push(`⚠️ Route passes near ${hazard.severity} risk zone: ${hazard.name}`);
-          }
         } else {
           warningCount++;
         }
@@ -291,24 +294,24 @@ export async function calculateSafeRoute(
     const hazardAnalysis = analyzeRouteHazards(route, hazards);
 
     if (hazardAnalysis.criticalCount > 0) {
-      route.warnings = [
+      route.warnings = Array.from(new Set([
         ...(route.warnings || []),
         '⚠️ WARNING: This route passes near high-risk hazard zones or active blockages',
         ...hazardAnalysis.warnings,
         '⚠️ Check with local emergency authorities before proceeding.',
-      ];
+      ]));
     } else if (hazardAnalysis.warningCount > 0) {
-      route.warnings = [
+      route.warnings = Array.from(new Set([
         ...(route.warnings || []),
         ...hazardAnalysis.warnings,
         'ℹ️ Route passes near moderate risk areas. Proceed with caution.',
-      ];
+      ]));
     } else {
-      route.warnings = [
+      route.warnings = Array.from(new Set([
         ...(route.warnings || []),
         '✓ Route does not pass near known high-risk zones or active road blockages',
         'ℹ️ Stay alert and follow local emergency advisories.',
-      ];
+      ]));
     }
 
     return {
