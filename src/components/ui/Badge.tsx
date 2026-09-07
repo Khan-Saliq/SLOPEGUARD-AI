@@ -44,6 +44,12 @@ export function StatusBadge({ status = 'unknown', className }: { status?: string
     resolved: 'bg-low/20 text-[#6a9a78] border-low/30',
     likely_original: 'bg-accent/20 text-accent-bright border-accent/30',
     potentially_manipulated: 'bg-critical/20 text-[#d86058] border-critical/30',
+    submitted_for_manual_verification: 'bg-moderate/20 text-[#d4b05a] border-moderate/30',
+    sent_to_admin_for_manual_inspection: 'bg-moderate/20 text-[#d4b05a] border-moderate/30',
+    camera_verified: 'bg-low/20 text-[#6a9a78] border-low/30',
+    camera_api: 'bg-low/20 text-[#6a9a78] border-low/30',
+    verified: 'bg-low/20 text-[#6a9a78] border-low/30',
+    accepted: 'bg-low/20 text-[#6a9a78] border-low/30',
     unknown: 'bg-card-hover text-dim border-border/30',
     insufficient: 'bg-card-hover text-dim border-border/30',
   };
