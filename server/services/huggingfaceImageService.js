@@ -12,9 +12,9 @@ const path = require('path');
 
 // Category mapping helper
 const CATEGORY_KEYWORDS = {
-  LANDSLIDE: ['landslide', 'mudslide', 'rockfall', 'avalanche', 'debris', 'soil displacement', 'quarry', 'fissure'],
-  ROAD_BLOCKAGE: ['road blockage', 'blocked road', 'debris mass', 'rockfall on road', 'collapsed road', 'highway obstruction', 'barricade'],
-  WATER_SEEPAGE: ['water seepage', 'stream', 'river', 'flood', 'hydraulic', 'waterbody', 'pore-water', 'muddy water', 'seashore', 'lake', 'dam', 'geyser', 'waterfall'],
+  LANDSLIDE: ['landslide', 'mudslide', 'rockfall', 'avalanche', 'debris', 'soil displacement', 'quarry', 'fissure', 'earthquake'],
+  ROAD_BLOCKAGE: ['road blockage', 'blocked road', 'debris mass', 'rockfall on road', 'collapsed road', 'highway obstruction', 'barricade', 'wreck', 'crash'],
+  WATER_SEEPAGE: ['water seepage', 'stream', 'river', 'flood', 'hydraulic', 'waterbody', 'pore-water', 'muddy water', 'seashore', 'lake', 'dam', 'geyser', 'waterfall', 'lakefront', 'seacoast'],
   CRACK: ['crack', 'fissure', 'fracture', 'road crack', 'slope fissure', 'trench', 'crevice'],
   MOUNTAIN: ['mountain', 'hill', 'alp', 'promontory', 'cliff', 'valley', 'slope', 'ridge', 'peak', 'volcano'],
   FOREST: ['forest', 'tree', 'foliage', 'vegetation', 'jungle', 'woods'],
@@ -23,8 +23,17 @@ const CATEGORY_KEYWORDS = {
   BRIDGE: ['bridge', 'viaduct', 'overpass'],
   ROAD: ['road', 'highway', 'street', 'asphalt', 'pathway', 'thoroughfare'],
   DAMAGED_INFRASTRUCTURE: ['building collapse', 'damaged wall', 'broken structure', 'ruin'],
-  HUMAN_PORTRAIT: ['person', 'human', 'face', 'portrait', 'selfie', 'man', 'woman', 'child', 'individual'],
-  INDOOR: ['room', 'desk', 'table', 'chair', 'paper', 'document', 'envelope', 'office', 'furniture', 'ceiling', 'wall', 'laptop', 'screen'],
+  HUMAN_PORTRAIT: [
+    'person', 'human', 'face', 'portrait', 'selfie', 'man', 'woman', 'child', 'individual',
+    'groom', 'bride', 'guy', 'girl', 'boy', 'suit', 'jersey', 't-shirt', 'trench coat',
+    'wig', 'sunglasses', 'bow tie', 'necktie', 'academic gown', 'scuba diver'
+  ],
+  INDOOR: [
+    'room', 'desk', 'table', 'chair', 'paper', 'document', 'envelope', 'office', 'furniture',
+    'ceiling', 'wall', 'laptop', 'screen', 'binder', 'cardboard', 'monitor', 'keyboard',
+    'space heater', 'coffee mug', 'carton', 'packet', 'website', 'book jacket', 'paper towel',
+    'dining table', 'folding chair', 'bookcase', 'computer', 'television', 'cellular telephone'
+  ],
 };
 
 function mapLabelsToHazardType(labels, categoryHint = 'landslide') {
@@ -41,12 +50,12 @@ function mapLabelsToHazardType(labels, categoryHint = 'landslide') {
 
     // Check Human Portrait / Selfie
     if (CATEGORY_KEYWORDS.HUMAN_PORTRAIT.some(kw => labelLower.includes(kw))) {
-      if (confidence > 0.15) isHumanPortrait = true;
+      if (confidence > 0.12) isHumanPortrait = true;
     }
 
-    // Check Indoor / Document
+    // Check Indoor / Document / Object
     if (CATEGORY_KEYWORDS.INDOOR.some(kw => labelLower.includes(kw))) {
-      if (confidence > 0.20) isIndoor = true;
+      if (confidence > 0.15) isIndoor = true;
     }
 
     // Check Hazard Types
@@ -106,16 +115,20 @@ function mapLabelsToHazardType(labels, categoryHint = 'landslide') {
     imageRelevance = 'IRRELEVANT';
     possibleHazardType = 'IRRELEVANT';
   } else if (isIndoor && !isHazard) {
-    imageRelevance = 'POSSIBLY_IRRELEVANT';
+    imageRelevance = 'IRRELEVANT';
     possibleHazardType = 'IRRELEVANT';
   } else if (isHazard || isOutdoorLandscape) {
     imageRelevance = topHazardScore > 0.75 ? 'RELEVANT' : 'POSSIBLY_RELEVANT';
+  } else {
+    // If not matching outdoor landscape or hazard
+    imageRelevance = 'IRRELEVANT';
+    possibleHazardType = 'IRRELEVANT';
   }
 
   return {
     imageRelevance,
     possibleHazardType: possibleHazardType === 'UNKNOWN' && isOutdoorLandscape ? 'NORMAL_LANDSCAPE' : possibleHazardType,
-    hazardConfidence: Number((topHazardScore || (isHazard ? 0.72 : 0.20)).toFixed(2)),
+    hazardConfidence: Number((topHazardScore || (isHazard ? 0.72 : 0.05)).toFixed(2)),
   };
 }
 

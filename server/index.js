@@ -147,6 +147,38 @@ async function authMiddleware(req, res, next) {
   }
 }
 
+async function optionalAuthMiddleware(req, res, next) {
+  let auth = req.headers.authorization;
+  if (!auth && req.query && req.query.token) auth = `Bearer ${req.query.token}`;
+  if (!auth) {
+    req.user = { id: 'anonymous-citizen', role: 'citizen', name: 'Anonymous Citizen' };
+    return next();
+  }
+  const parts = auth.split(' ');
+  if (parts.length !== 2) {
+    req.user = { id: 'anonymous-citizen', role: 'citizen', name: 'Anonymous Citizen' };
+    return next();
+  }
+  try {
+    const decoded = jwt.verify(parts[1], SECRET);
+    const currentUser = await findUserById(decoded.id);
+    if (currentUser) {
+      req.user = {
+        ...decoded,
+        id: currentUser.id || currentUser._id,
+        role: currentUser.role,
+        name: currentUser.name,
+        email: currentUser.email,
+      };
+    } else {
+      req.user = { id: 'anonymous-citizen', role: 'citizen', name: 'Anonymous Citizen' };
+    }
+  } catch (e) {
+    req.user = { id: 'anonymous-citizen', role: 'citizen', name: 'Anonymous Citizen' };
+  }
+  next();
+}
+
 // Simple SSE (Server-Sent Events) subscription map: userId -> array of res
 const sseClients = new Map();
 function sendSse(userId, event, data) {
@@ -482,7 +514,7 @@ app.post('/api/reports', authMiddleware, async (req, res) => {
 });
 
 // AI Media Inspection Endpoint using Backend Hugging Face Vision Service
-app.post('/api/inspect-media', authMiddleware, async (req, res) => {
+app.post('/api/inspect-media', optionalAuthMiddleware, async (req, res) => {
   try {
     const { imageUrl, category, captureMetadata } = req.body;
 

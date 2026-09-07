@@ -640,8 +640,12 @@ export function ReportHazardPage() {
                       <Info className="h-6 w-6 text-amber-400 shrink-0" />
                     )}
                     <div>
-                      <span className="text-xs font-mono font-bold uppercase tracking-wider bg-sky-500/20 text-sky-300 px-2 py-0.5 rounded border border-sky-500/30">
-                        AI SCREENING: {aiResult.isHazardEnvironment ? 'POTENTIALLY RELEVANT' : 'MANUAL VERIFICATION REQUIRED'}
+                      <span className={`text-xs font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                        aiResult.isHazardEnvironment
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                          : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                      }`}>
+                        AI SCREENING: {aiResult.isHazardEnvironment ? 'POTENTIALLY RELEVANT HAZARD' : 'IRRELEVANT / MANUAL REVIEW REQUIRED'}
                       </span>
                       <h4 className="text-sm font-bold text-white mt-1">
                         {aiResult.recommendation}
@@ -652,7 +656,7 @@ export function ReportHazardPage() {
 
                 {/* Detected Features */}
                 <div className="rounded-lg bg-slate-900/60 p-3 border border-slate-800 space-y-2">
-                  <p className="text-xs text-slate-400 font-semibold">Detected Labels & Feature Vectors:</p>
+                  <p className="text-xs text-slate-400 font-semibold">Detected Hugging Face Model Labels:</p>
                   <div className="flex flex-wrap gap-1.5">
                     {aiResult.reasons.map((feat, idx) => (
                       <span

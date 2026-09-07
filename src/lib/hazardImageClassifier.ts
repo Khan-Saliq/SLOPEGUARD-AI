@@ -183,7 +183,7 @@ async function tryBackendHuggingFaceInspection(
 }
 
 /**
- * Analyzes an image, video blob, or sample photo to extract terrain feature vectors
+ * Analyzes an image or video blob using Backend Hugging Face AI Vision API ONLY
  */
 export async function classifyHazardImage(
   imageSource: string | HTMLImageElement,
@@ -191,165 +191,36 @@ export async function classifyHazardImage(
 ): Promise<MLInspectionResult> {
   const pixelResult = await extractCanvasPixels(imageSource);
 
-  // 1. Try Backend Hugging Face AI Vision API
+  // 1. Send media image to Backend Hugging Face Vision API
   if (pixelResult?.base64DataUrl) {
     const backendResult = await tryBackendHuggingFaceInspection(pixelResult.base64DataUrl, categoryHint);
     if (backendResult) {
       return backendResult;
     }
-  }
-
-  if (!pixelResult) {
-    return fallbackClassification(imageSource, categoryHint);
-  }
-
-  // 2. Client-Side High-Precision Feature Extraction Matrix Fallback
-  const { data } = pixelResult;
-  const totalPixels = 120 * 120;
-
-  let greenCount = 0;
-  let brownEarthCount = 0;
-  let blueWaterCount = 0;
-  let grayRockCount = 0;
-  let skinToneCount = 0;
-  let indoorWhitePaperCount = 0;
-  let totalBrightnessSum = 0;
-  let edgeGradientSum = 0;
-
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
-
-    const pixelBrightness = (r + g + b) / 3;
-    totalBrightnessSum += pixelBrightness;
-
-    const isSkinTone = (
-      r > 90 && g > 60 && b > 40 &&
-      r > g + 12 && g > b + 4 &&
-      (r - b) > 30 && (r - b) < 110 &&
-      Math.abs(g - b) < 45 &&
-      pixelBrightness > 65
-    );
-    if (isSkinTone) skinToneCount++;
-
-    if (r > 195 && g > 195 && b > 195 && Math.abs(r - g) < 12 && Math.abs(g - b) < 12) {
-      indoorWhitePaperCount++;
-    }
-
-    if ((g > r + 10 && g > b + 8 && pixelBrightness > 20) || (g > 65 && g > r + 5 && g > b)) {
-      greenCount++;
-    } else if ((r > 45 && g > 30 && b < 130 && r > b + 6 && g > b - 10 && pixelBrightness > 20 && pixelBrightness < 180) || (r > 60 && g > 40 && r >= g && g >= b && (r - b) > 10)) {
-      brownEarthCount++;
-    } else if (b > r + 30 && b > g + 20 && b > 85 && pixelBrightness > 65 && r < 140) {
-      blueWaterCount++;
-    } else if (Math.abs(r - g) < 22 && Math.abs(g - b) < 22 && pixelBrightness > 25 && pixelBrightness < 215) {
-      grayRockCount++;
-    }
-
-    if (i > 4) {
-      const prevR = data[i - 4];
-      const prevG = data[i - 3];
-      edgeGradientSum += Math.abs(r - prevR) + Math.abs(g - prevG);
+  } else if (typeof imageSource === 'string') {
+    const backendResult = await tryBackendHuggingFaceInspection(imageSource, categoryHint);
+    if (backendResult) {
+      return backendResult;
     }
   }
 
-  const avgBrightness = totalBrightnessSum / totalPixels;
-  const avgEdgeGradient = edgeGradientSum / totalPixels;
-  const greenRatio = greenCount / totalPixels;
-  const earthRatio = brownEarthCount / totalPixels;
-  const waterRatio = blueWaterCount / totalPixels;
-  const rockRatio = grayRockCount / totalPixels;
-  const skinRatio = skinToneCount / totalPixels;
-  const paperRatio = indoorWhitePaperCount / totalPixels;
-
-  const totalHazardFeatureRatio = greenRatio + earthRatio + waterRatio + rockRatio;
-
-  if (paperRatio > 0.40 && totalHazardFeatureRatio < 0.10) {
-    return {
-      is_hazard_environment: false,
-      environment_type: 'invalid_non_hazard',
-      confidence: 0.94,
-      detected_features: ['Indoor Document / Paper Photo Vector Detected'],
-      decision: 'sent_to_admin_for_manual_inspection',
-      message: 'This image appears to be an indoor document or paper photo. Submitted for manual verification.',
-      recommended_severity: 'low',
-      analysisStatus: 'COMPLETED',
-      imageRelevance: 'POSSIBLY_IRRELEVANT',
-      requiresHumanVerification: true,
-    };
-  }
-
-  if (avgBrightness < 12) {
-    return {
-      is_hazard_environment: false,
-      environment_type: 'invalid_non_hazard',
-      confidence: 0.98,
-      detected_features: ['Black / Unlit Camera Stream Detected'],
-      decision: 'sent_to_admin_for_manual_inspection',
-      message: 'Black or pitch-dark photo detected. Submitted for manual verification.',
-      recommended_severity: 'low',
-      analysisStatus: 'COMPLETED',
-      imageRelevance: 'POSSIBLY_IRRELEVANT',
-      requiresHumanVerification: true,
-    };
-  }
-
-  const isNonHazardSampleUrl = typeof imageSource === 'string' && imageSource.includes('photo-1517841905240');
-  if (isNonHazardSampleUrl) {
-    return {
-      is_hazard_environment: false,
-      environment_type: 'invalid_non_hazard',
-      confidence: 0.95,
-      detected_features: ['Indoor Room Photo Detected'],
-      decision: 'sent_to_admin_for_manual_inspection',
-      message: 'This image may not be related to the selected hazard. You can still submit it for review.',
-      recommended_severity: 'low',
-      analysisStatus: 'COMPLETED',
-      imageRelevance: 'POSSIBLY_IRRELEVANT',
-      requiresHumanVerification: true,
-    };
-  }
-
-  if (skinRatio > 0.25 && avgEdgeGradient < 22 && totalHazardFeatureRatio < skinRatio) {
-    return {
-      is_hazard_environment: false,
-      environment_type: 'invalid_non_hazard',
-      confidence: 0.96,
-      detected_features: ['Human Facial Skin Tone Vector Detected'],
-      decision: 'sent_to_admin_for_manual_inspection',
-      message: 'This image may depict a portrait or selfie. Submitted for manual verification.',
-      recommended_severity: 'low',
-      analysisStatus: 'COMPLETED',
-      imageRelevance: 'POSSIBLY_IRRELEVANT',
-      requiresHumanVerification: true,
-    };
-  }
-
-  return {
-    is_hazard_environment: true,
-    environment_type: categoryHint === 'water_seepage' ? 'water_seepage_body' : (categoryHint === 'road_blockage' || categoryHint === 'crack' ? 'rock_landslide_debris' : 'hill_mountain_slope'),
-    confidence: 0.88,
-    detected_features: ['Terrain Surface Feature Vector Extracted'],
-    decision: 'sent_to_admin_for_manual_inspection',
-    message: 'Possible hazard environment detected. Awaiting official verification.',
-    recommended_severity: 'moderate',
-    analysisStatus: 'COMPLETED',
-    imageRelevance: 'POSSIBLY_RELEVANT',
-    possibleHazardType: categoryHint === 'water_seepage' ? 'POSSIBLE_WATER_SEEPAGE' : (categoryHint === 'road_blockage' ? 'POSSIBLE_ROAD_BLOCKAGE' : 'POSSIBLE_LANDSLIDE'),
-    hazardConfidence: 0.75,
-    requiresHumanVerification: true,
-  };
+  // 2. If Hugging Face API is unreachable/unconfigured:
+  // DO NOT execute custom canvas pixel matrix algorithm.
+  // Return explicit unavailable status without fake feature vector strings.
+  return fallbackClassification(imageSource, categoryHint);
 }
 
-function fallbackClassification(_imageSource: string | HTMLImageElement, categoryHint: string = 'landslide'): MLInspectionResult {
+function fallbackClassification(
+  _imageSource: string | HTMLImageElement,
+  categoryHint: string = 'landslide'
+): MLInspectionResult {
   return {
-    is_hazard_environment: true,
+    is_hazard_environment: false,
     environment_type: categoryHint === 'water_seepage' ? 'water_seepage_body' : (categoryHint === 'road_blockage' || categoryHint === 'crack' ? 'rock_landslide_debris' : 'hill_mountain_slope'),
-    confidence: 0.85,
-    detected_features: ['Field Evidence Media Stream Verified'],
+    confidence: 0.50,
+    detected_features: ['Hugging Face Vision API Offline / Unconfigured'],
     decision: 'sent_to_admin_for_manual_inspection',
-    message: 'AI screening is temporarily unavailable. Your report has been submitted for manual verification.',
+    message: 'Hugging Face AI screening is temporarily unavailable. Your report has been submitted for manual verification.',
     recommended_severity: 'moderate',
     analysisStatus: 'UNAVAILABLE',
     imageRelevance: 'UNKNOWN',
