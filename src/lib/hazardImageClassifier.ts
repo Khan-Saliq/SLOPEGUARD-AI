@@ -124,13 +124,14 @@ async function tryGeminiVisionAIInspection(
   _categoryHint: string
 ): Promise<MLInspectionResult | null> {
   const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || localStorage.getItem('gemini_api_key');
-  if (!apiKey || apiKey === 'undefined') {
+  if (!apiKey || apiKey === 'undefined' || typeof apiKey !== 'string' || apiKey.trim().length < 10) {
     return null;
   }
 
   try {
+    const cleanApiKey = apiKey.trim();
     const base64Content = base64DataUrl.replace(/^data:image\/\w+;base64,/, '');
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cleanApiKey}`;
 
     const promptText = `You are a geological hazard AI computer vision classifier for an emergency early warning system.
 Analyze this photo and classify whether it depicts a REAL NATURAL HAZARD ENVIRONMENT (landslide, hill/mountain slope movement, rockfall, road blockage due to debris, crack/fissure in slope/road, or water seepage).
@@ -159,14 +160,17 @@ Return ONLY a raw JSON object (no markdown fence) with this schema:
           {
             parts: [
               { text: promptText },
-              { inline_data: { mime_type: 'image/jpeg', data: base64Content } },
+              { inlineData: { mimeType: 'image/jpeg', data: base64Content } },
             ],
           },
         ],
       }),
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.warn('Gemini Vision API status:', response.status, await response.text());
+      return null;
+    }
 
     const data = await response.json();
     const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -178,10 +182,10 @@ Return ONLY a raw JSON object (no markdown fence) with this schema:
     return {
       is_hazard_environment: Boolean(parsed.is_hazard_environment),
       environment_type: parsed.environment_type || 'invalid_non_hazard',
-      confidence: Number(parsed.confidence) || 0.92,
-      detected_features: Array.isArray(parsed.detected_features) ? parsed.detected_features : ['Gemini Vision AI Feature Vector'],
-      decision: parsed.decision === 'sent_to_admin_for_manual_inspection' ? 'sent_to_admin_for_manual_inspection' : 'rejected',
-      message: parsed.message || (parsed.is_hazard_environment ? 'Gemini AI Vision Verified: Real hazard environment detected.' : 'Gemini AI Vision Rejected: Media does not depict a hazard.'),
+      confidence: Number(parsed.confidence) || 0.95,
+      detected_features: Array.isArray(parsed.detected_features) ? parsed.detected_features : ['Google Gemini AI Vision Feature Vector'],
+      decision: parsed.is_hazard_environment ? 'sent_to_admin_for_manual_inspection' : 'rejected',
+      message: parsed.message || (parsed.is_hazard_environment ? 'Gemini AI Vision Verified: Real hazard environment detected.' : '🔴 REJECTED BY GEMINI AI VISION: Media does not depict a hazard environment.'),
       recommended_severity: parsed.recommended_severity || 'moderate',
     };
   } catch (e) {
@@ -317,8 +321,7 @@ export async function classifyHazardImage(
   }
 
   // RULE 2: REAL HAZARD TERRAIN VERIFICATION (Landslide, Mud, Earth, Slope, Rocks, Water Seepage)
-  // Prioritize terrain features over skin tone heuristic so brown soil/mud is never mistaken for a selfie
-  if (totalHazardFeatureRatio > 0.08 || isHazardSampleUrl || avgBrightness >= 20) {
+  if (totalHazardFeatureRatio > 0.08 || isHazardSampleUrl) {
     let envType: MLInspectionResult['environment_type'] = 'hill_mountain_slope';
     const features: string[] = [];
 
