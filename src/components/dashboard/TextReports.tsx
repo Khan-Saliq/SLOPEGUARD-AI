@@ -27,13 +27,13 @@ export function AlertsTextReport({ selectedZone, alerts }: TextReportProps & { a
   return (
     <Card className="border-border/60 bg-card/90">
       <CardHeader className="border-b border-border/40 pb-3">
-        <CardTitle className="flex items-center justify-between">
+        <CardTitle className="flex items-center justify-between flex-wrap gap-2">
           <span className="flex items-center gap-2 text-sm font-bold text-main">
             <FileText className="h-4 w-4 text-accent-bright" />
-            Early Warning Feed — Text Status Report
+            Early Warning Feed — Text Report
           </span>
-          <span className="text-[10px] font-mono bg-accent/10 text-accent-bright px-2 py-0.5 rounded border border-accent/20">
-            Live Warning Log
+          <span className="text-xs font-bold text-accent-bright bg-accent/20 px-2 py-0.5 rounded border border-accent/30 font-mono">
+            📍 Location: {selectedZone ? `${selectedZone.name} (${selectedZone.location.district})` : 'All Monitored Sectors'}
           </span>
         </CardTitle>
       </CardHeader>
@@ -42,16 +42,16 @@ export function AlertsTextReport({ selectedZone, alerts }: TextReportProps & { a
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/10 p-3 space-y-1.5">
             <div className="flex items-center gap-2 text-emerald-400 font-semibold text-xs">
               <CheckCircle2 className="h-4 w-4" />
-              <span>NORMAL CONDITION — ALL SLOPES STABLE & SAFE</span>
+              <span>NORMAL CONDITION — {selectedZone ? selectedZone.name.toUpperCase() : 'ALL SLOPES STABLE & SAFE'}</span>
             </div>
             <p className="text-xs text-slate-300">
-              No active critical or high hazard alerts in monitored sectors. Slope shear strength within safe limits (Safety Factor FS &gt; 1.5).
+              No active critical or high hazard alerts in {selectedZone ? selectedZone.name : 'monitored sectors'}. Slope shear strength within safe limits (Safety Factor FS &gt; 1.5).
             </p>
             <div className="grid grid-cols-2 gap-2 pt-1 text-[11px] font-mono text-slate-400">
+              <div>• Target Area: {selectedZone ? selectedZone.name : 'All Sectors'}</div>
               <div>• Active Escalate Warnings: 0</div>
               <div>• System Status: Baseline Safe</div>
               <div>• Emergency Hotlines: Standby</div>
-              <div>• PA Siren Towers: Ready (18/18)</div>
             </div>
           </div>
         ) : (
@@ -64,7 +64,7 @@ export function AlertsTextReport({ selectedZone, alerts }: TextReportProps & { a
                 </div>
                 <p className="text-slate-300 text-[11px]">{alert.message}</p>
                 <div className="text-[10px] text-slate-400 font-mono flex items-center justify-between pt-1 border-t border-border/30">
-                  <span>District: {alert.district}</span>
+                  <span>Location: {alert.district} ({selectedZone ? selectedZone.name : 'Sector Alert'})</span>
                   <span>Time: {new Date(alert.timestamp).toLocaleTimeString()}</span>
                 </div>
               </div>
@@ -85,21 +85,21 @@ export function TerrainTextReport({ selectedZone }: TextReportProps) {
   return (
     <Card className="h-full flex flex-col justify-between border-border/60 bg-card/90">
       <CardHeader className="border-b border-border/40 pb-3">
-        <CardTitle className="flex items-center justify-between">
+        <CardTitle className="flex items-center justify-between flex-wrap gap-2">
           <span className="flex items-center gap-2 text-sm font-bold text-main">
             <Layers className="h-4 w-4 text-accent-bright" />
             3D Elevation & Topography — Text Report
           </span>
-          <span className="text-[10px] font-mono bg-accent/10 text-accent-bright px-2 py-0.5 rounded border border-accent/20">
-            DEM Technical Analysis
+          <span className="text-xs font-bold text-accent-bright bg-accent/20 px-2 py-0.5 rounded border border-accent/30 font-mono">
+            📍 Location: {selectedZone ? `${selectedZone.name} (${selectedZone.location.district})` : 'Regional Terrain Grid'}
           </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-3 space-y-3 flex-1 flex flex-col justify-between text-xs">
         <div className="rounded-lg bg-black/30 p-3 border border-border/40 space-y-2">
           <div className="flex justify-between items-center pb-2 border-b border-border/30">
-            <span className="font-semibold text-main">Micro-Topography Profile:</span>
-            <span className="font-mono text-accent-bright font-bold">{selectedZone ? selectedZone.name : 'NER Regional Slope Grid'}</span>
+            <span className="font-semibold text-main">Target Micro-Topography:</span>
+            <span className="font-mono text-accent-bright font-bold">{selectedZone ? `${selectedZone.name}, ${selectedZone.location.district}` : 'NER Regional Slope Grid'}</span>
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
@@ -124,7 +124,7 @@ export function TerrainTextReport({ selectedZone }: TextReportProps) {
           </div>
 
           <div className="pt-1 text-[11px] text-slate-300 leading-relaxed">
-            <strong className="text-white">Hydrological Summary:</strong> {isNormal
+            <strong className="text-white">Hydrological Summary ({selectedZone ? selectedZone.name : 'Regional Grid'}):</strong> {isNormal
               ? 'Precipitation runoff is draining naturally without excessive topsoil pore-water pressure accumulation. Contour stability remains within nominal limits.'
               : 'Heavy rain infiltration reduces soil effective stress along slip surface. High probability of localized slope failure along hill cutting.'}
           </div>
@@ -142,18 +142,22 @@ export function RainfallTextReport({ selectedZone }: TextReportProps) {
   return (
     <Card className="border-border/60 bg-card/90">
       <CardHeader className="border-b border-border/40 pb-3">
-        <CardTitle className="flex items-center justify-between">
+        <CardTitle className="flex items-center justify-between flex-wrap gap-2">
           <span className="flex items-center gap-2 text-sm font-bold text-main">
             <Database className="h-4 w-4 text-accent-bright" />
-            Rainfall & Soil Moisture Telemetry Report
+            Rainfall & Moisture Report
           </span>
-          <span className="text-[10px] font-mono text-accent-bright bg-accent/10 px-2 py-0.5 rounded border border-accent/20">
-            Live ARG Sensor Log
+          <span className="text-xs font-bold text-accent-bright bg-accent/20 px-2 py-0.5 rounded border border-accent/30 font-mono">
+            📍 Location: {selectedZone ? `${selectedZone.name}` : 'All Monitored Areas'}
           </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-3 space-y-3 text-xs">
         <div className="rounded-lg bg-black/30 p-3 border border-border/40 space-y-2">
+          <div className="flex justify-between items-center font-mono">
+            <span className="text-slate-400">Location Data Source:</span>
+            <span className="text-white font-bold">{selectedZone ? `${selectedZone.name} (${selectedZone.location.district})` : 'All ARG Weather Stations'}</span>
+          </div>
           <div className="flex justify-between items-center font-mono">
             <span className="text-slate-400">Current 24h Precipitation:</span>
             <span className="text-accent-bright font-bold text-sm">{rain} mm</span>
@@ -163,7 +167,7 @@ export function RainfallTextReport({ selectedZone }: TextReportProps) {
             <span className="text-accent-warm font-bold text-sm">{moisture} %</span>
           </div>
           <div className="flex justify-between items-center font-mono border-t border-border/30 pt-1.5">
-            <span className="text-slate-400">Pore-Water Hydraulic Status:</span>
+            <span className="text-slate-400">Pore-Water Status:</span>
             <span className={moisture > 70 ? "text-critical font-bold" : "text-emerald-400 font-bold"}>
               {moisture > 70 ? 'CRITICAL SATURATION' : 'NORMAL SAFE BASELINE'}
             </span>
@@ -182,13 +186,13 @@ export function RiskTrendTextReport({ selectedZone }: TextReportProps) {
   return (
     <Card className="border-border/60 bg-card/90">
       <CardHeader className="border-b border-border/40 pb-3">
-        <CardTitle className="flex items-center justify-between">
+        <CardTitle className="flex items-center justify-between flex-wrap gap-2">
           <span className="flex items-center gap-2 text-sm font-bold text-main">
             <Activity className="h-4 w-4 text-accent-bright" />
-            Live Risk Progression Trajectory Report
+            Risk Trajectory Report
           </span>
-          <span className="text-[10px] font-mono text-accent-bright bg-accent/10 px-2 py-0.5 rounded border border-accent/20">
-            Temporal AI Log
+          <span className="text-xs font-bold text-accent-bright bg-accent/20 px-2 py-0.5 rounded border border-accent/30 font-mono">
+            📍 Location: {selectedZone ? `${selectedZone.name}` : 'All Monitored Areas'}
           </span>
         </CardTitle>
       </CardHeader>
@@ -196,7 +200,7 @@ export function RiskTrendTextReport({ selectedZone }: TextReportProps) {
         <div className="rounded-lg bg-black/30 p-3 border border-border/40 space-y-2 font-mono">
           <div className="flex justify-between items-center">
             <span className="text-slate-400">Target Area:</span>
-            <span className="text-white font-bold">{selectedZone ? selectedZone.name : 'Regional Slope Grid'}</span>
+            <span className="text-white font-bold">{selectedZone ? `${selectedZone.name} (${selectedZone.location.district}, ${selectedZone.location.state})` : 'Regional Slope Grid'}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-slate-400">Composite Hazard Score:</span>
@@ -213,19 +217,19 @@ export function RiskTrendTextReport({ selectedZone }: TextReportProps) {
 }
 
 // 5. District Risk Summary — Text Component Report
-export function DistrictTextReport({ districts }: { districts: DistrictSummary[] }) {
+export function DistrictTextReport({ districts, selectedZone }: { districts: DistrictSummary[]; selectedZone?: RiskZone | null }) {
   const safeDistricts = (districts && districts.length > 0) ? districts : DEFAULT_NORMAL_DISTRICTS;
 
   return (
     <Card className="h-full flex flex-col justify-between border-border/60 bg-card/90">
       <CardHeader className="border-b border-border/40 pb-3">
-        <CardTitle className="flex items-center justify-between">
+        <CardTitle className="flex items-center justify-between flex-wrap gap-2">
           <span className="flex items-center gap-2 text-sm font-bold text-main">
             <MapPin className="h-4 w-4 text-accent-bright" />
-            District Administrative Summary — Text Table
+            District Summary Text Table
           </span>
-          <span className="text-[10px] font-mono bg-accent/10 text-accent-bright px-2 py-0.5 rounded border border-accent/20">
-            Administrative Matrix
+          <span className="text-xs font-bold text-accent-bright bg-accent/20 px-2 py-0.5 rounded border border-accent/30 font-mono">
+            📍 Location Scope: {selectedZone ? `${selectedZone.name} (${selectedZone.location.district})` : 'All Administrative Districts'}
           </span>
         </CardTitle>
       </CardHeader>
@@ -250,7 +254,7 @@ export function DistrictTextReport({ districts }: { districts: DistrictSummary[]
 }
 
 // 6. AI-Prioritized High-Risk Hotspots — Text Component Report
-export function HotspotsTextReport({ riskZones }: { riskZones: RiskZone[] }) {
+export function HotspotsTextReport({ riskZones, selectedZone }: { riskZones: RiskZone[]; selectedZone?: RiskZone | null }) {
   const allZones = riskZones || [];
   const highCritical = allZones.filter(z => z.riskLevel === 'critical' || z.riskLevel === 'high');
   const safeZones = highCritical.length > 0 ? highCritical : allZones;
@@ -260,20 +264,22 @@ export function HotspotsTextReport({ riskZones }: { riskZones: RiskZone[] }) {
   return (
     <Card className="h-full flex flex-col justify-between border-border/60 bg-card/90">
       <CardHeader className="border-b border-border/40 pb-3">
-        <CardTitle className="flex items-center justify-between">
+        <CardTitle className="flex items-center justify-between flex-wrap gap-2">
           <span className="flex items-center gap-2 text-sm font-bold text-main">
             <ShieldCheck className="h-4 w-4 text-accent-bright" />
-            AI-Prioritized Hazard Ranking — Text Report
+            AI Hazard Ranking Text Report
           </span>
-          <span className="text-[10px] font-mono bg-accent/10 text-accent-bright px-2 py-0.5 rounded border border-accent/20">
-            Ranked Evaluation
+          <span className="text-xs font-bold text-accent-bright bg-accent/20 px-2 py-0.5 rounded border border-accent/30 font-mono">
+            📍 Focus Area: {selectedZone ? `${selectedZone.name}` : 'All Monitored Hotspots'}
           </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-3 space-y-2 text-xs">
         <div className="max-h-[220px] overflow-y-auto space-y-1.5 pr-1">
           {sortedZones.map((z, i) => (
-            <div key={z.id} className="flex items-center justify-between rounded bg-slate-900/60 p-2 border border-slate-800">
+            <div key={z.id} className={`flex items-center justify-between rounded p-2 border transition-colors ${
+              selectedZone?.id === z.id ? 'bg-accent/20 border-accent-bright/60' : 'bg-slate-900/60 border-slate-800'
+            }`}>
               <div>
                 <p className="font-bold text-white">{i + 1}. {z.name}</p>
                 <p className="text-[10px] text-slate-400">{z.location.district}, {z.location.state}</p>
@@ -301,18 +307,21 @@ export function RadarTextReport({ selectedZone }: TextReportProps) {
   return (
     <Card className="h-full flex flex-col justify-between border-border/60 bg-card/90">
       <CardHeader className="border-b border-border/40 pb-3">
-        <CardTitle className="flex items-center justify-between">
+        <CardTitle className="flex items-center justify-between flex-wrap gap-2">
           <span className="flex items-center gap-2 text-sm font-bold text-main">
             <Cpu className="h-4 w-4 text-accent-bright" />
-            Multi-Criteria Risk Weights — Text Table
+            Risk Weights Matrix Report
           </span>
-          <span className="text-[10px] font-mono bg-accent/10 text-accent-bright px-2 py-0.5 rounded border border-accent/20">
-            Weight Contribution Matrix
+          <span className="text-xs font-bold text-accent-bright bg-accent/20 px-2 py-0.5 rounded border border-accent/30 font-mono">
+            📍 Location: {selectedZone ? `${selectedZone.name}` : 'All Monitored Areas (Regional Average)'}
           </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-3 space-y-2 text-xs">
         <div className="rounded-lg bg-black/30 p-3 border border-border/40 space-y-1.5 font-mono">
+          <div className="text-[11px] text-slate-400 border-b border-border/30 pb-1 mb-1 font-bold">
+            Data Source: {selectedZone ? `${selectedZone.name}, ${selectedZone.location.district}` : 'Regional Telemetry Average'}
+          </div>
           <div className="flex justify-between items-center text-slate-300">
             <span>• W₁ Rainfall Rate (30%):</span>
             <span className="text-white font-bold">{rainW} pts</span>

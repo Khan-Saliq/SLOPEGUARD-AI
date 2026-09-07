@@ -272,23 +272,23 @@ export function AnalyticsPage() {
         {/* District Risk Distribution Diagram */}
         <div className="col-span-1 lg:col-span-7">
           {outputDisplayMode === 'text' ? (
-            <DistrictTextReport districts={displayDistricts} />
+            <DistrictTextReport districts={displayDistricts} selectedZone={selectedZone} />
           ) : outputDisplayMode === 'graphical' ? (
             <Card className="h-full flex flex-col justify-between border-border/60 bg-card/90">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between flex-wrap gap-2">
                   <span className="flex items-center gap-2">
                     <BarChart3 className="h-4 w-4 text-accent-bright" />
-                    District-wise Risk Distribution Diagram {selectedZone && `(${selectedZone.location.district})`}
+                    District-wise Risk Distribution Diagram
                   </span>
-                  <span className="text-[10px] font-mono bg-accent/10 text-accent-bright px-2 py-0.5 rounded border border-accent/20">
-                    Stacked Area Chart
+                  <span className="text-xs font-bold text-accent-bright bg-accent/20 px-2 py-0.5 rounded border border-accent/30 font-mono">
+                    📍 Location: {selectedZone ? `${selectedZone.name} (${selectedZone.location.district})` : 'All Administrative Districts'}
                   </span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="bg-black/20 p-2 rounded-lg border border-border/40">
-                  <DistrictSummaryChart data={displayDistricts} />
+                  <DistrictSummaryChart data={displayDistricts} selectedZone={selectedZone} />
                 </div>
 
                 {showEvaluatorExplanations && (
@@ -304,13 +304,13 @@ export function AnalyticsPage() {
             </Card>
           ) : (
             <div className="space-y-4">
-              <DistrictTextReport districts={displayDistricts} />
+              <DistrictTextReport districts={displayDistricts} selectedZone={selectedZone} />
               <Card>
                 <CardHeader>
                   <CardTitle className="text-xs font-bold text-main">District-wise Stacked Area Diagram</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <DistrictSummaryChart data={displayDistricts} />
+                  <DistrictSummaryChart data={displayDistricts} selectedZone={selectedZone} />
                 </CardContent>
               </Card>
             </div>
@@ -327,10 +327,10 @@ export function AnalyticsPage() {
                 <CardTitle className="flex items-center justify-between flex-wrap gap-2">
                   <span className="flex items-center gap-2">
                     <PieChart className="h-4 w-4 text-accent-warm" />
-                    Multi-Criteria Risk Factor Radar Diagram {selectedZone && `(${selectedZone.name})`}
+                    Multi-Criteria Risk Radar Diagram
                   </span>
-                  <span className="text-[10px] font-mono bg-accent/10 text-accent-warm px-2 py-0.5 rounded border border-accent/20">
-                    6-Axis Radar Spider Chart
+                  <span className="text-xs font-bold text-accent-bright bg-accent/20 px-2 py-0.5 rounded border border-accent/30 font-mono">
+                    📍 Location: {selectedZone ? `${selectedZone.name}` : 'All Monitored Areas (Regional Average)'}
                   </span>
                 </CardTitle>
               </CardHeader>
@@ -381,17 +381,17 @@ export function AnalyticsPage() {
 
       {/* Row 3: Location-wise Horizontal Bar Chart Diagram */}
       {outputDisplayMode === 'text' ? (
-        <HotspotsTextReport riskZones={riskZones} />
+        <HotspotsTextReport riskZones={riskZones} selectedZone={selectedZone} />
       ) : outputDisplayMode === 'graphical' ? (
         <Card className="border-border/60 bg-card/90">
           <CardHeader>
             <CardTitle className="flex items-center justify-between flex-wrap gap-2">
               <span className="flex items-center gap-2">
                 <Activity className="h-4 w-4 text-low" />
-                Location-wise Risk Scores Bar Diagram {selectedZone && `(Highlighting ${selectedZone.name})`}
+                Location-wise Risk Scores Bar Diagram
               </span>
-              <span className="text-[10px] font-mono bg-accent/10 text-low px-2 py-0.5 rounded border border-accent/20">
-                Horizontal Bar Chart (Scores 0–100)
+              <span className="text-xs font-bold text-accent-bright bg-accent/20 px-2.5 py-1 rounded-md border border-accent/30 font-mono">
+                📍 Location: {selectedZone ? `${selectedZone.name} (${selectedZone.location.district})` : 'All Monitored Sites'}
               </span>
             </CardTitle>
           </CardHeader>

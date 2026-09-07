@@ -16,6 +16,181 @@ export function lookupPlaceName(lat: number, lng: number): {
   population: number;
   infra: number;
 } {
+  // 0. North Eastern Region (NER) Major Cities & Vulnerable Districts Check
+  if (lat >= 21.5 && lat <= 29.5 && lng >= 88.0 && lng <= 97.5) {
+    // Shillong & East Khasi Hills (Meghalaya)
+    if (lat >= 25.4 && lat <= 25.8 && lng >= 91.7 && lng <= 92.1) {
+      return {
+        name: 'Shillong Urban & East Khasi Slope',
+        area: 'Laitlum & Shillong Ridge',
+        city: 'Shillong',
+        district: 'East Khasi Hills',
+        state: 'Meghalaya',
+        isSafe: false,
+        score: 78,
+        rainfall: 210,
+        soilMoisture: 84,
+        slope: 42,
+        historicalRisk: 80,
+        satelliteIndicator: 75,
+        population: 143000,
+        infra: 38,
+      };
+    }
+    // Cherrapunji (Sohra) / Mawsynram (Meghalaya)
+    if (lat >= 25.1 && lat <= 25.4 && lng >= 91.6 && lng <= 91.9) {
+      return {
+        name: 'Cherrapunji Sohra Cliff Sector',
+        area: 'Nohkalikai & Mawsynram Belt',
+        city: 'Cherrapunji',
+        district: 'East Khasi Hills',
+        state: 'Meghalaya',
+        isSafe: false,
+        score: 88,
+        rainfall: 340,
+        soilMoisture: 92,
+        slope: 48,
+        historicalRisk: 90,
+        satelliteIndicator: 85,
+        population: 18500,
+        infra: 12,
+      };
+    }
+    // Guwahati & Kamrup Metro (Assam)
+    if (lat >= 26.0 && lat <= 26.3 && lng >= 91.5 && lng <= 92.0) {
+      return {
+        name: 'Guwahati City & Nilachal Hill Belt',
+        area: 'Kamakhya & Khanapara Slopes',
+        city: 'Guwahati',
+        district: 'Kamrup Metro',
+        state: 'Assam',
+        isSafe: false,
+        score: 64,
+        rainfall: 135,
+        soilMoisture: 68,
+        slope: 34,
+        historicalRisk: 62,
+        satelliteIndicator: 60,
+        population: 950000,
+        infra: 120,
+      };
+    }
+    // Gangtok & East Sikkim
+    if (lat >= 27.2 && lat <= 27.5 && lng >= 88.5 && lng <= 88.8) {
+      return {
+        name: 'Gangtok Ridge & National Highway 10',
+        area: 'Deorali & Tathangchen Slope',
+        city: 'Gangtok',
+        district: 'East Sikkim',
+        state: 'Sikkim',
+        isSafe: false,
+        score: 82,
+        rainfall: 195,
+        soilMoisture: 88,
+        slope: 46,
+        historicalRisk: 85,
+        satelliteIndicator: 80,
+        population: 100000,
+        infra: 28,
+      };
+    }
+    // Aizawl & Central Mizoram
+    if (lat >= 23.6 && lat <= 23.9 && lng >= 92.6 && lng <= 92.9) {
+      return {
+        name: 'Aizawl Ridge & Laipuitlang Slope',
+        area: 'Chaltlang & Tuirial Corridor',
+        city: 'Aizawl',
+        district: 'Aizawl',
+        state: 'Mizoram',
+        isSafe: false,
+        score: 72,
+        rainfall: 160,
+        soilMoisture: 74,
+        slope: 44,
+        historicalRisk: 70,
+        satelliteIndicator: 68,
+        population: 290000,
+        infra: 45,
+      };
+    }
+    // Kohima & Nagaland Highlands
+    if (lat >= 25.5 && lat <= 25.8 && lng >= 94.0 && lng <= 94.3) {
+      return {
+        name: 'Kohima Bypass & Dzüko Valley Slope',
+        area: 'Phesama & Kohima Town',
+        city: 'Kohima',
+        district: 'Kohima',
+        state: 'Nagaland',
+        isSafe: false,
+        score: 68,
+        rainfall: 145,
+        soilMoisture: 72,
+        slope: 40,
+        historicalRisk: 66,
+        satelliteIndicator: 62,
+        population: 115000,
+        infra: 22,
+      };
+    }
+    // Imphal & Manipur Valley/Hills
+    if (lat >= 24.7 && lat <= 25.0 && lng >= 93.8 && lng <= 94.2) {
+      return {
+        name: 'Imphal West & Kangchup Slope',
+        area: 'Langol Hills & NH-37 Corridor',
+        city: 'Imphal',
+        district: 'Imphal West',
+        state: 'Manipur',
+        isSafe: false,
+        score: 65,
+        rainfall: 140,
+        soilMoisture: 70,
+        slope: 36,
+        historicalRisk: 64,
+        satelliteIndicator: 60,
+        population: 265000,
+        infra: 32,
+      };
+    }
+    // Agartala & West Tripura
+    if (lat >= 23.7 && lat <= 24.0 && lng >= 91.1 && lng <= 91.5) {
+      return {
+        name: 'Agartala Urban & Baramura Hill',
+        area: 'Baramura Ridge Sector',
+        city: 'Agartala',
+        district: 'West Tripura',
+        state: 'Tripura',
+        isSafe: true,
+        score: 28,
+        rainfall: 85,
+        soilMoisture: 42,
+        slope: 22,
+        historicalRisk: 25,
+        satelliteIndicator: 20,
+        population: 400000,
+        infra: 65,
+      };
+    }
+    // Itanagar / Tawang (Arunachal Pradesh)
+    if (lat >= 27.0 && lat <= 27.8 && lng >= 91.8 && lng <= 93.8) {
+      return {
+        name: 'Itanagar Capital & Sela Pass Sector',
+        area: 'Papum Pare & Tawang Highway',
+        city: 'Itanagar',
+        district: 'Papum Pare',
+        state: 'Arunachal Pradesh',
+        isSafe: false,
+        score: 75,
+        rainfall: 180,
+        soilMoisture: 80,
+        slope: 45,
+        historicalRisk: 72,
+        satelliteIndicator: 70,
+        population: 60000,
+        infra: 18,
+      };
+    }
+  }
+
   // 1. Kashmir & Northern Himalayan Belt Check (Lat 32.5 - 35.5, Lng 73.5 - 77.0)
   if (lat >= 32.5 && lat <= 35.5 && lng >= 73.5 && lng <= 77.0) {
     // Pahalgam & Anantnag sector

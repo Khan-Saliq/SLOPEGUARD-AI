@@ -58,23 +58,22 @@ export function RainfallChart({ selectedZone }: { selectedZone?: RiskZone | null
       })
     : dataToUse;
 
-  const isNormalCondition = !selectedZone || selectedZone.riskLevel === 'low';
-
   return (
     <Card className="border-border/60 bg-card/90">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center justify-between flex-wrap gap-2">
           <span className="flex items-center gap-2">
-            {selectedZone ? `Rainfall & Soil Moisture — ${selectedZone.name}` : 'Rainfall & Soil Moisture (Live Baseline)'}
+            📊 Rainfall & Soil Moisture
           </span>
-          <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
-            isNormalCondition
-              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-semibold'
-              : 'bg-accent/10 text-accent-bright border-accent/20 font-semibold'
-          }`}>
-            {isNormalCondition ? 'Normal Safe Baseline' : `${selectedZone?.rainfall}mm | ${selectedZone?.soilMoisture}%`}
+          <span className="text-xs font-bold text-accent-bright bg-accent/20 px-2.5 py-1 rounded-md border border-accent/30 font-mono">
+            📍 Location: {selectedZone ? `${selectedZone.name} (${selectedZone.location.district})` : 'All Monitored Areas (Regional Baseline)'}
           </span>
         </CardTitle>
+        <p className="text-[11px] text-slate-400 font-mono mt-1">
+          {selectedZone
+            ? `Telemetry for ${selectedZone.name}, ${selectedZone.location.district}, ${selectedZone.location.state}`
+            : 'Aggregate hydrometeorological parameters across monitored sectors'}
+        </p>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={200}>
@@ -130,15 +129,20 @@ export function RiskTrendChart({ selectedZone }: { selectedZone?: RiskZone | nul
 
   return (
     <Card className="border-border/60 bg-card/90">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>
-            {selectedZone ? `Risk Trajectory — ${selectedZone.name}` : 'Live Risk Trend (Baseline)'}
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center justify-between flex-wrap gap-2">
+          <span className="flex items-center gap-2">
+            📈 Risk Progression Trajectory
           </span>
-          <span className="text-[10px] font-mono bg-accent/10 text-accent-bright px-2 py-0.5 rounded border border-accent/20">
-            {selectedZone ? `Score: ${selectedZone.riskScore}` : 'Slope Stability Baseline'}
+          <span className="text-xs font-bold text-accent-bright bg-accent/20 px-2.5 py-1 rounded-md border border-accent/30 font-mono">
+            📍 Location: {selectedZone ? `${selectedZone.name} (${selectedZone.location.district})` : 'All Monitored Areas (Regional Baseline)'}
           </span>
         </CardTitle>
+        <p className="text-[11px] text-slate-400 font-mono mt-1">
+          {selectedZone
+            ? `Temporal hazard score curve for ${selectedZone.name}`
+            : 'Regional risk distribution across active monitoring stations'}
+        </p>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={200}>
@@ -169,22 +173,30 @@ export function RiskTrendChart({ selectedZone }: { selectedZone?: RiskZone | nul
   );
 }
 
-export function DistrictSummaryChart({ data }: { data: DistrictSummary[] }) {
+export function DistrictSummaryChart({ data, selectedZone }: { data: DistrictSummary[]; selectedZone?: RiskZone | null }) {
   const safeData = (data && data.length > 0) ? data : DEFAULT_NORMAL_DISTRICTS;
 
   return (
-    <ResponsiveContainer width="100%" height={250}>
-      <AreaChart data={safeData}>
-        <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
-        <XAxis dataKey="name" tick={{ fill: CHART_TEXT, fontSize: 9 }} angle={-30} textAnchor="end" height={60} />
-        <YAxis tick={{ fill: CHART_TEXT, fontSize: 10 }} />
-        <Tooltip contentStyle={TOOLTIP_STYLE} />
-        <Legend wrapperStyle={{ fontSize: 11 }} />
-        <Area type="monotone" dataKey="critical" stackId="1" stroke={RISK_COLORS.critical} fill={RISK_COLORS.critical} fillOpacity={0.6} />
-        <Area type="monotone" dataKey="high" stackId="1" stroke={RISK_COLORS.high} fill={RISK_COLORS.high} fillOpacity={0.6} />
-        <Area type="monotone" dataKey="moderate" stackId="1" stroke={RISK_COLORS.moderate} fill={RISK_COLORS.moderate} fillOpacity={0.6} />
-        <Area type="monotone" dataKey="low" stackId="1" stroke={RISK_COLORS.low} fill={RISK_COLORS.low} fillOpacity={0.6} />
-      </AreaChart>
-    </ResponsiveContainer>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-xs font-mono bg-black/40 p-2 rounded-lg border border-border/40">
+        <span className="text-slate-300">Administrative District Data Scope:</span>
+        <span className="text-accent-bright font-bold">
+          📍 Location: {selectedZone ? `${selectedZone.name} (${selectedZone.location.district}, ${selectedZone.location.state})` : 'All Administrative Districts'}
+        </span>
+      </div>
+      <ResponsiveContainer width="100%" height={250}>
+        <AreaChart data={safeData}>
+          <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+          <XAxis dataKey="name" tick={{ fill: CHART_TEXT, fontSize: 9 }} angle={-30} textAnchor="end" height={60} />
+          <YAxis tick={{ fill: CHART_TEXT, fontSize: 10 }} />
+          <Tooltip contentStyle={TOOLTIP_STYLE} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Area type="monotone" dataKey="critical" stackId="1" stroke={RISK_COLORS.critical} fill={RISK_COLORS.critical} fillOpacity={0.6} />
+          <Area type="monotone" dataKey="high" stackId="1" stroke={RISK_COLORS.high} fill={RISK_COLORS.high} fillOpacity={0.6} />
+          <Area type="monotone" dataKey="moderate" stackId="1" stroke={RISK_COLORS.moderate} fill={RISK_COLORS.moderate} fillOpacity={0.6} />
+          <Area type="monotone" dataKey="low" stackId="1" stroke={RISK_COLORS.low} fill={RISK_COLORS.low} fillOpacity={0.6} />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
   );
 }

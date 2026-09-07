@@ -15,7 +15,7 @@ import type { RiskLevel } from '../types';
 
 const HeroVideoPlayer = memo(function HeroVideoPlayer() {
   return (
-    <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 shadow-2xl flex items-center justify-center">
+    <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 shadow-2xl flex items-center justify-center pointer-events-none select-none">
       <video
         id="hero-video-player"
         src="/demo-video.mp4"
@@ -23,15 +23,19 @@ const HeroVideoPlayer = memo(function HeroVideoPlayer() {
         muted
         loop
         playsInline
-        controls
         preload="auto"
+        disablePictureInPicture
+        controlsList="nobroadcast nofullscreen noremoteplayback"
+        onContextMenu={(e) => e.preventDefault()}
         // @ts-ignore
         decoding="async"
-        className="w-full h-full object-contain rounded-2xl"
+        className="w-full h-full object-contain rounded-2xl pointer-events-none select-none"
         style={{
           transform: 'translateZ(0)',
           backfaceVisibility: 'hidden',
           willChange: 'transform',
+          pointerEvents: 'none',
+          userSelect: 'none',
         }}
       />
     </div>

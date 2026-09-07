@@ -450,13 +450,13 @@ export function DashboardPage() {
         {/* 5. District Risk Summary Breakdown */}
         <div className="col-span-1 lg:col-span-4">
           {outputDisplayMode === 'text' ? (
-            <DistrictTextReport districts={displayDistricts} />
+            <DistrictTextReport districts={displayDistricts} selectedZone={selectedZone} />
           ) : outputDisplayMode === 'graphical' ? (
             <Card className="h-full flex flex-col justify-between">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-accent-warm" />
-                  District Risk Summary {selectedZone && `(${selectedZone.location.district})`}
+                  District Risk Summary {selectedZone && `(${selectedZone.name})`}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -502,13 +502,13 @@ export function DashboardPage() {
             </Card>
           ) : (
             <div className="space-y-4">
-              <DistrictTextReport districts={displayDistricts} />
+              <DistrictTextReport districts={displayDistricts} selectedZone={selectedZone} />
               <Card>
                 <CardHeader>
                   <CardTitle className="text-xs font-bold text-main">District Summary Chart</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <DistrictSummaryChart data={displayDistricts} />
+                  <DistrictSummaryChart data={displayDistricts} selectedZone={selectedZone} />
                 </CardContent>
               </Card>
             </div>
@@ -518,13 +518,18 @@ export function DashboardPage() {
         {/* 6. AI Prioritized High-Risk Hotspots */}
         <div className="col-span-1 lg:col-span-4">
           {outputDisplayMode === 'text' ? (
-            <HotspotsTextReport riskZones={riskZones} />
+            <HotspotsTextReport riskZones={riskZones} selectedZone={selectedZone} />
           ) : outputDisplayMode === 'graphical' ? (
             <Card className="h-full flex flex-col justify-between">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Route className="h-4 w-4 text-low" />
-                  AI-Prioritized High-Risk Hotspots
+                <CardTitle className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="flex items-center gap-2">
+                    <Route className="h-4 w-4 text-low" />
+                    AI-Prioritized Hotspots
+                  </span>
+                  <span className="text-xs font-bold text-accent-bright bg-accent/20 px-2 py-0.5 rounded border border-accent/30 font-mono">
+                    📍 Location: {selectedZone ? `${selectedZone.name}` : 'All Monitored Hotspots'}
+                  </span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -577,7 +582,7 @@ export function DashboardPage() {
             </Card>
           ) : (
             <div className="space-y-4">
-              <HotspotsTextReport riskZones={riskZones} />
+              <HotspotsTextReport riskZones={riskZones} selectedZone={selectedZone} />
               <Card>
                 <CardHeader>
                   <CardTitle className="text-xs font-bold text-main font-mono">Hotspot Vulnerability Rankings</CardTitle>
