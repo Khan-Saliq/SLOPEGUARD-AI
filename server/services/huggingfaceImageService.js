@@ -132,6 +132,24 @@ function mapLabelsToHazardType(labels, categoryHint = 'landslide') {
   };
 }
 
+// Auto-load .env if not present in process.env
+try {
+  const envPath = path.join(__dirname, '..', '.env');
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, 'utf8');
+    envContent.split('\n').forEach(line => {
+      const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+      if (match) {
+        const key = match[1];
+        let value = match[2] || '';
+        if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
+        if (value.startsWith("'") && value.endsWith("'")) value = value.slice(1, -1);
+        if (!process.env[key]) process.env[key] = value.trim();
+      }
+    });
+  }
+} catch (e) {}
+
 async function analyzeImageWithHuggingFace(imageSource, categoryHint = 'landslide') {
   const apiKey = process.env.HUGGINGFACE_API_KEY || process.env.HF_API_KEY;
   const modelName = process.env.HUGGINGFACE_IMAGE_MODEL || 'google/vit-base-patch16-224';
@@ -192,21 +210,40 @@ async function analyzeImageWithHuggingFace(imageSource, categoryHint = 'landslid
     }
 
     const cleanToken = apiKey.trim();
-    const endpoint = `${baseUrl.replace(/\/$/, '')}/${modelName}`;
+    const endpointList = [
+      `https://router.huggingface.co/hf-inference/v1/models/${modelName}`,
+      `${baseUrl.replace(/\/$/, '')}/${modelName}`
+    ];
 
-    const response = await axios.post(endpoint, imageBuffer, {
-      headers: {
-        Authorization: `Bearer ${cleanToken}`,
-        'Content-Type': 'application/octet-stream',
-      },
-      timeout: 12000,
-    });
+    let firstError = null;
+    let lastError = null;
+    let response = null;
 
-    const rawData = response.data;
-    if (!Array.isArray(rawData)) {
-      throw new Error('Invalid response structure from Hugging Face model');
+    for (const endpoint of endpointList) {
+      try {
+        response = await axios.post(endpoint, imageBuffer, {
+          headers: {
+            Authorization: `Bearer ${cleanToken}`,
+            'Content-Type': 'application/octet-stream',
+          },
+          timeout: 12000,
+        });
+        if (response && Array.isArray(response.data)) {
+          break;
+        }
+      } catch (epErr) {
+        if (!firstError) firstError = epErr;
+        lastError = epErr;
+      }
     }
 
+    const primaryErr = (firstError?.response?.status === 403) ? firstError : (lastError || firstError);
+
+    if (!response || !Array.isArray(response.data)) {
+      throw primaryErr || new Error('Invalid response structure from Hugging Face model');
+    }
+
+    const rawData = response.data;
     const detectedLabels = rawData.slice(0, 5).map((item) => ({
       label: String(item.label || item.name || 'unknown'),
       confidence: Number((item.score || item.confidence || 0).toFixed(2)),
@@ -240,7 +277,15 @@ async function analyzeImageWithHuggingFace(imageSource, categoryHint = 'landslid
       summaryMessage,
     };
   } catch (err) {
-    console.warn(`[HuggingFace Service] API call failed: ${err.message}`);
+    const status = err.response?.status;
+    const errorDetail = err.response?.data?.error || err.message;
+    console.warn(`[HuggingFace Service] API call failed (HTTP ${status || 'ERR'}): ${errorDetail}`);
+
+    let userErrorMessage = `Hugging Face API request failed: ${errorDetail}`;
+    if (status === 403 || (typeof errorDetail === 'string' && errorDetail.includes('permissions'))) {
+      userErrorMessage = 'Hugging Face API token requires "Inference" permission. Please enable "Make calls to the serverless Inference API" at https://huggingface.co/settings/tokens.';
+    }
+
     return {
       analysisStatus: 'UNAVAILABLE',
       imageRelevance: 'UNKNOWN',
@@ -250,8 +295,8 @@ async function analyzeImageWithHuggingFace(imageSource, categoryHint = 'landslid
       requiresHumanVerification: true,
       modelName,
       processedAt,
-      errorMessage: `Hugging Face API request failed: ${err.message}`,
-      summaryMessage: 'AI screening is temporarily unavailable. Your report has been submitted for manual verification.',
+      errorMessage: userErrorMessage,
+      summaryMessage: userErrorMessage,
     };
   }
 }
