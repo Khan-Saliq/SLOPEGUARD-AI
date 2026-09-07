@@ -196,8 +196,29 @@ export default function AssignmentsPage() {
   };
 
   // Helper getters for report AI prediction data
-  const getReportImageUrl = (r: any) => {
-    return r.evidenceUrl || r.mediaUrl || r.imageUrl || null;
+  const getReportImageUrl = (r: any): string | undefined => {
+    if (!r) return undefined;
+    const url =
+      r.evidenceUrl ||
+      r.mediaUrl ||
+      r.imageUrl ||
+      r.photoUrl ||
+      r.evidence_url ||
+      r.media_url ||
+      r.image_url ||
+      r.photo_url;
+    if (url && typeof url === 'string' && url.trim().length > 0) {
+      return url;
+    }
+    // Category fallbacks for reports without custom photo attachments
+    const categoryFallbacks: Record<string, string> = {
+      landslide: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80',
+      road_blockage: 'https://images.unsplash.com/photo-1508873696983-2df515122519?auto=format&fit=crop&w=800&q=80',
+      crack: 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=800&q=80',
+      slope_movement: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80',
+      water_seepage: 'https://images.unsplash.com/photo-1437719417032-8595fd9e9dc6?auto=format&fit=crop&w=800&q=80',
+    };
+    return categoryFallbacks[r.category] || 'https://images.unsplash.com/photo-1508873696983-2df515122519?auto=format&fit=crop&w=800&q=80';
   };
 
   const getReportDetectedLabels = (r: any) => {
@@ -534,7 +555,7 @@ export default function AssignmentsPage() {
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                           <Button
                             size="sm"
-                            onClick={() => setPreviewImage(getReportImageUrl(activeReport))}
+                            onClick={() => setPreviewImage(getReportImageUrl(activeReport) || null)}
                             className="bg-accent-bright text-white text-[10px] px-2.5 py-1 rounded flex items-center gap-1"
                           >
                             <Eye className="w-3 h-3" /> Fullview Photo

@@ -273,6 +273,8 @@ export const INITIAL_CITIZEN_REPORTS: CitizenReport[] = [
     trustScore: 92,
     actionPriority: 90,
     timestamp: new Date().toISOString(),
+    evidenceUrl: 'https://images.unsplash.com/photo-1508873696983-2df515122519?auto=format&fit=crop&w=800&q=80',
+    mediaUrl: 'https://images.unsplash.com/photo-1508873696983-2df515122519?auto=format&fit=crop&w=800&q=80',
   },
   {
     id: 'cr-102',
@@ -290,6 +292,8 @@ export const INITIAL_CITIZEN_REPORTS: CitizenReport[] = [
     trustScore: 95,
     actionPriority: 93,
     timestamp: new Date(Date.now() - 3600000).toISOString(),
+    evidenceUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80',
+    mediaUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80',
   },
   {
     id: 'cr-103',
@@ -307,6 +311,8 @@ export const INITIAL_CITIZEN_REPORTS: CitizenReport[] = [
     trustScore: 88,
     actionPriority: 82,
     timestamp: new Date(Date.now() - 7200000).toISOString(),
+    evidenceUrl: 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=800&q=80',
+    mediaUrl: 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=800&q=80',
   },
   {
     id: 'cr-104',
@@ -324,6 +330,8 @@ export const INITIAL_CITIZEN_REPORTS: CitizenReport[] = [
     trustScore: 90,
     actionPriority: 85,
     timestamp: new Date(Date.now() - 10800000).toISOString(),
+    evidenceUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80',
+    mediaUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80',
   },
   {
     id: 'cr-105',
@@ -341,6 +349,8 @@ export const INITIAL_CITIZEN_REPORTS: CitizenReport[] = [
     trustScore: 84,
     actionPriority: 72,
     timestamp: new Date(Date.now() - 14400000).toISOString(),
+    evidenceUrl: 'https://images.unsplash.com/photo-1437719417032-8595fd9e9dc6?auto=format&fit=crop&w=800&q=80',
+    mediaUrl: 'https://images.unsplash.com/photo-1437719417032-8595fd9e9dc6?auto=format&fit=crop&w=800&q=80',
   },
 ];
 
@@ -558,6 +568,9 @@ interface SubmitReportInput {
   evidenceAssessment: CitizenReport['evidenceAssessment'];
   mediaAuthenticity: CitizenReport['mediaAuthenticity'];
   aiConfidence: number;
+  evidenceUrl?: string;
+  mediaUrl?: string;
+  imageUrl?: string;
 }
 
 interface MonitorDataContextType {
@@ -835,6 +848,8 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
   const submitReport = useCallback(
     (input: SubmitReportInput) => {
       const severityScore = severityToScore(input.severity);
+      const evidenceUrl = input.evidenceUrl || input.mediaUrl || input.imageUrl;
+      const mediaUrl = input.mediaUrl || input.evidenceUrl || input.imageUrl;
       const report: CitizenReport = {
         id: `cr-${Date.now()}`,
         userId: input.userId,
@@ -851,6 +866,8 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
         trustScore: 80,
         aiConfidence: input.aiConfidence,
         actionPriority: computeActionPriority(75, input.aiConfidence, severityScore, 80),
+        evidenceUrl,
+        mediaUrl,
       };
 
       setCitizenReports(prev => [report, ...prev]);
