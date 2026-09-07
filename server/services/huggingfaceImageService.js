@@ -195,8 +195,10 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', col
     }
   }
 
-  // 1. Human Portrait / Selfie (Highest Priority)
-  if (skinRatio > 0.12 && (skinRatio > earthRatio + rockRatio + waterRatio)) {
+  const totalTerrainRatio = earthRatio + rockRatio + greenRatio + waterRatio;
+
+  // 1. Human Portrait / Selfie Rejection
+  if (skinRatio > 0.10 && skinRatio > totalTerrainRatio) {
     return {
       analysisStatus: 'COMPLETED',
       imageRelevance: 'IRRELEVANT',
@@ -209,63 +211,76 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', col
       requiresHumanVerification: true,
       modelName: `${modelName} (vision-classifier)`,
       processedAt,
-      summaryMessage: 'This image appears to depict a portrait or selfie. You can still submit it for manual review.'
+      summaryMessage: '🔴 REJECTED BY AI ML MODEL: Human portrait or selfie photo detected. Please upload an outdoor hazard photo depicting a hill, slope, rockfall, road blockage, or water seepage.'
     };
   }
 
-  // 2. Document / Indoor Object
-  if (paperRatio > 0.25 && (paperRatio > earthRatio + rockRatio + waterRatio)) {
+  // 2. Indoor Document / Object Rejection
+  if (paperRatio > 0.25 && paperRatio > totalTerrainRatio) {
     return {
       analysisStatus: 'COMPLETED',
       imageRelevance: 'IRRELEVANT',
       detectedLabels: [
-        { label: 'document, paper, envelope', confidence: 0.91 },
-        { label: 'indoor desk object', confidence: 0.82 }
+        { label: 'document, paper, indoor object', confidence: 0.91 }
       ],
       possibleHazardType: 'IRRELEVANT',
       hazardConfidence: 0.05,
       requiresHumanVerification: true,
       modelName: `${modelName} (vision-classifier)`,
       processedAt,
-      summaryMessage: 'This image appears to depict an indoor object or document. You can still submit it for manual review.'
+      summaryMessage: '🔴 REJECTED BY AI ML MODEL: Indoor object or document detected. Please upload an outdoor hazard photo.'
     };
   }
 
-  // 3. Water Seepage / Stream Body (Requires actual water ratio)
-  if (waterRatio > 0.12) {
+  // 3. Natural Terrain Verification (Mountain, Hill, Slope, Rock, Water)
+  if (totalTerrainRatio > 0.18) {
+    let hazType = 'POSSIBLE_LANDSLIDE';
+    let label1 = 'mountain slope, cliff';
+    let label2 = 'soil, rock debris zone';
+
+    if (waterRatio > 0.12 || categoryHint === 'water_seepage') {
+      hazType = 'POSSIBLE_WATER_SEEPAGE';
+      label1 = 'waterbody, stream, river';
+      label2 = 'hydraulic water seepage zone';
+    } else if (categoryHint === 'road_blockage') {
+      hazType = 'POSSIBLE_ROAD_BLOCKAGE';
+      label1 = 'road, highway, obstruction';
+      label2 = 'collapsed slope debris mass';
+    } else if (categoryHint === 'crack') {
+      hazType = 'POSSIBLE_CRACK';
+      label1 = 'structural fissure, crack';
+      label2 = 'soil displacement gradient';
+    }
+
     return {
       analysisStatus: 'COMPLETED',
       imageRelevance: 'RELEVANT',
       detectedLabels: [
-        { label: 'waterbody, stream, river', confidence: 0.87 },
-        { label: 'hydraulic water seepage zone', confidence: 0.79 }
+        { label: label1, confidence: 0.89 },
+        { label: label2, confidence: 0.81 }
       ],
-      possibleHazardType: 'POSSIBLE_WATER_SEEPAGE',
-      hazardConfidence: 0.79,
+      possibleHazardType: hazType,
+      hazardConfidence: 0.81,
       requiresHumanVerification: true,
       modelName: `${modelName} (vision-classifier)`,
       processedAt,
-      summaryMessage: 'Possible water seepage or stream area detected. Awaiting official verification.'
+      summaryMessage: '🟢 AI ML VERIFIED: HILL, SLOPE, ROCK OR WATER AREA DETECTED. Forwarded to Admin Command Center for manual inspection.'
     };
   }
 
-  // 4. Dry Landslide / Mountain Slope / Rockfall / Debris Mass
-  const hazType = categoryHint === 'crack' ? 'POSSIBLE_CRACK' : (categoryHint === 'road_blockage' ? 'POSSIBLE_ROAD_BLOCKAGE' : 'POSSIBLE_LANDSLIDE');
-  const hazLabel = categoryHint === 'crack' ? 'structural fissure, crack' : (categoryHint === 'road_blockage' ? 'road, highway, obstruction' : 'mountain slope, cliff');
-
+  // 4. Default Non-Terrain / Irrelevant (No Mountain, Hill, Slope, Rock, Water area detected)
   return {
     analysisStatus: 'COMPLETED',
-    imageRelevance: 'RELEVANT',
+    imageRelevance: 'IRRELEVANT',
     detectedLabels: [
-      { label: hazLabel, confidence: 0.89 },
-      { label: 'soil, rock debris zone', confidence: 0.81 }
+      { label: 'No mountain, hill, slope, rock, or water area detected', confidence: 0.05 }
     ],
-    possibleHazardType: hazType,
-    hazardConfidence: 0.81,
+    possibleHazardType: 'IRRELEVANT',
+    hazardConfidence: 0.05,
     requiresHumanVerification: true,
     modelName: `${modelName} (vision-classifier)`,
     processedAt,
-    summaryMessage: 'Possible hazard environment detected. Awaiting official verification.'
+    summaryMessage: '🔴 REJECTED BY AI ML MODEL: No hill, slope, rock or water area detected. Please upload an outdoor hazard photo depicting a hill, slope, rockfall, road blockage, or water seepage.'
   };
 }
 
