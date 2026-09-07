@@ -184,6 +184,8 @@ export interface CitizenReport {
   category: ProblemCategory;
   description: string;
   mediaUrl?: string;
+  evidenceUrl?: string;
+  imageUrl?: string;
   timestamp: string;
   status: ReportStatus;
   evidenceAssessment: EvidenceAssessment;
@@ -192,6 +194,19 @@ export interface CitizenReport {
   trustScore: number;
   aiConfidence: number;
   actionPriority: number;
+  ai_analysis_status?: string;
+  ai_model_name?: string;
+  ai_model_version?: string;
+  detected_labels?: any[];
+  detectedLabels?: any[];
+  predicted_hazard_type?: string;
+  possibleHazardType?: string;
+  hazard_confidence?: number;
+  hazardConfidence?: number;
+  image_relevance?: string;
+  imageRelevance?: string;
+  summaryMessage?: string;
+  requires_human_review?: boolean;
 }
 
 export interface EmergencyTask {
