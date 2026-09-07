@@ -129,12 +129,8 @@ async function tryGeminiVisionAIInspection(
   }
 
   const cleanApiKey = apiKey.trim();
-  if (!cleanApiKey.startsWith('AIzaSy')) {
-    console.warn(
-      `[Gemini AI Vision] Configured VITE_GEMINI_API_KEY ("${cleanApiKey.slice(0, 8)}...") is invalid. ` +
-      `Google Gemini API keys from Google AI Studio must start with "AIzaSy". ` +
-      `Falling back to local high-precision computer vision classifier.`
-    );
+  // Support both legacy AIza... keys and new AQ.... Google AI Studio keys
+  if (cleanApiKey.length < 10) {
     return null;
   }
 
