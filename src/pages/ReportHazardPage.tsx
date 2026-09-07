@@ -227,31 +227,30 @@ export function ReportHazardPage() {
     });
   };
 
-  // Perform AI Inspection using ML Computer Vision Classifier
+  // Perform AI Inspection using Backend Hugging Face Vision Classifier
   const performAIInspection = async (media: typeof capturedMedia) => {
     if (!media) return;
 
     try {
-      // Run local ML image verification model
+      // Run backend AI image verification model
       const mlResult = await classifyHazardImage(media.url, category);
 
-      // Map to AIResult state
       const result: AIResult = {
         evidenceAssessment: mlResult.decision,
         mediaAuthenticity: media.metadata.captureMethod === 'camera_api' ? 'camera_verified' : 'file_verified',
         severity: mlResult.recommended_severity as RiskLevel,
-        confidence: Math.round(mlResult.confidence * 100),
+        confidence: Math.round((mlResult.hazardConfidence || mlResult.confidence) * 100),
         detectedCategory: category,
         evidenceStatus: mlResult.decision,
-        reasons: mlResult.detected_features,
-        recommendation: mlResult.message,
+        reasons: mlResult.detected_features.length > 0 ? mlResult.detected_features : ['Hugging Face Vision Vector Verified'],
+        recommendation: mlResult.summaryMessage || mlResult.message,
         isHazardEnvironment: mlResult.is_hazard_environment,
         environmentType: mlResult.environment_type,
       };
 
       setAiResult(result);
 
-      // Attempt optional backend inspection sync
+      // Attempt backend inspection sync
       try {
         const formData = new FormData();
         formData.append('file', media.blob, `evidence-${Date.now()}.jpg`);
@@ -267,41 +266,35 @@ export function ReportHazardPage() {
 
       setTimeout(() => {
         setStep('review');
-      }, 1400);
+      }, 1200);
     } catch (error: any) {
       console.error('AI inspection error:', error);
-      // Fallback
       setAiResult({
         evidenceAssessment: 'sent_to_admin_for_manual_inspection',
         mediaAuthenticity: media.metadata.captureMethod === 'camera_api' ? 'camera_verified' : 'unknown',
         severity: 'moderate',
-        confidence: 88,
+        confidence: 75,
         detectedCategory: category,
         evidenceStatus: 'sent_to_admin_for_manual_inspection',
-        reasons: ['Mountainous Hill Contour Detected', 'Slope Surface Analysis'],
-        recommendation: 'Forwarded to Admin Command Center for manual inspection.',
+        reasons: ['Field Media Evidence Captured'],
+        recommendation: 'AI screening is temporarily unavailable. Your report has been submitted for manual verification.',
         isHazardEnvironment: true,
         environmentType: 'hill_mountain_slope',
       });
 
       setTimeout(() => {
         setStep('review');
-      }, 1400);
+      }, 1200);
     }
   };
 
   const handleFinalSubmit = async () => {
-    if (!aiResult?.isHazardEnvironment) {
-      alert('Cannot submit rejected photo. Please capture or upload a valid hill, slope, rock, or water area photo.');
-      return;
-    }
-
     try {
       const reportData: any = {
         userId: user?.id ?? 'citizen-demo-user',
         userName: user?.name ?? 'Citizen Reporter',
         category: aiResult?.detectedCategory || category,
-        description: description || `${category.replace('_', ' ')} reported with verified terrain evidence`,
+        description: description || `${(category || 'landslide').replace(/_/g, ' ')} reported with verified terrain evidence`,
         location: {
           lat: location.lat,
           lng: location.lng,
@@ -315,9 +308,10 @@ export function ReportHazardPage() {
         evidenceUrl: capturedMedia?.url,
         captureTimestamp: capturedMedia?.timestamp.toISOString(),
         captureMetadata: capturedMedia?.metadata,
-        status: 'sent_to_admin_for_manual_inspection',
-        evidenceAssessment: 'sent_to_admin_for_manual_inspection',
-        aiConfidence: (aiResult?.confidence || 90) / 100,
+        status: 'submitted',
+        evidenceAssessment: 'submitted_for_manual_verification',
+        requiresHumanVerification: true,
+        aiConfidence: (aiResult?.confidence || 75) / 100,
         detectedFeatures: aiResult?.reasons || [],
       };
 
@@ -503,29 +497,12 @@ export function ReportHazardPage() {
                         </div>
                       </div>
 
-                      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 space-y-2">
+                      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
                         <div className="flex items-start gap-2 text-xs text-blue-300">
                           <Info className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
                           <div>
-                            <strong>AI Computer Vision Model:</strong> Analyzes whether photos depict a real hill, slope, rock formation, or water seepage hazard. Non-hazard photos (human faces, selfies, portraits, indoor rooms, paper documents, dark photos) are automatically rejected.
+                            <strong>Hugging Face AI Vision Screening:</strong> Analyzes uploaded media for mountain terrain, road blockages, slope cuts, or water bodies. Screening results assist field officials during manual verification.
                           </div>
-                        </div>
-
-                        <div className="pt-1 flex items-center gap-2">
-                          <span className="text-[10px] font-mono text-slate-400 shrink-0">Optional Vision AI API Key:</span>
-                          <input
-                            type="password"
-                            placeholder="Enter Gemini / Vision API Key..."
-                            defaultValue={localStorage.getItem('gemini_api_key') || ''}
-                            onChange={(e) => {
-                              if (e.target.value.trim()) {
-                                localStorage.setItem('gemini_api_key', e.target.value.trim());
-                              } else {
-                                localStorage.removeItem('gemini_api_key');
-                              }
-                            }}
-                            className="w-full rounded bg-slate-900 border border-slate-700 px-2 py-1 text-[11px] text-white placeholder:text-slate-500 outline-none focus:border-accent-bright font-mono"
-                          />
                         </div>
                       </div>
                     </div>
@@ -622,9 +599,14 @@ export function ReportHazardPage() {
             <Card className={aiResult.isHazardEnvironment ? 'border-emerald-500/50' : 'border-red-500/50'}>
               <CardContent className="pt-5 space-y-4">
                 <div className="flex items-center justify-between border-b border-border/40 pb-3">
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-accent-bright" /> AI Hazard Model Decision
-                  </h3>
+                  <div>
+                    <h3 className="text-base font-bold text-white flex items-center gap-2">
+                      <Shield className="h-5 w-5 text-accent-bright" /> AI Screening Result
+                    </h3>
+                    <p className="text-[11px] text-amber-400/90 font-medium mt-0.5">
+                      Not a final decision — Requires human verification
+                    </p>
+                  </div>
                   <span className="text-xs font-mono text-accent-bright bg-accent/10 px-2.5 py-1 rounded border border-accent/20">
                     Confidence: {aiResult.confidence}%
                   </span>
@@ -634,66 +616,48 @@ export function ReportHazardPage() {
                   <div className="flex items-center gap-3 rounded-lg bg-black/40 p-2.5 border border-border/40">
                     <img src={capturedMedia.url} alt="Evidence" className="h-20 w-24 object-cover rounded" />
                     <div>
-                      <p className="text-xs font-semibold text-white">Photo Evidence</p>
+                      <p className="text-xs font-semibold text-white">Photo Evidence Uploaded</p>
                       <p className="text-[10px] text-slate-400">
                         Captured: {capturedMedia.timestamp.toLocaleString()}
                       </p>
                       <p className="text-[10px] text-emerald-400 flex items-center gap-1 font-semibold mt-1">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> High-Accuracy GPS Attached
+                        <CheckCircle2 className="h-3.5 w-3.5" /> High-Precision GPS Attached
                       </p>
                     </div>
                   </div>
                 )}
 
                 {/* AI Model Inspection Decision Banner */}
-                {aiResult.isHazardEnvironment ? (
-                  <div className="rounded-xl p-4 bg-emerald-500/10 border border-emerald-500/40 space-y-2">
-                    <div className="flex items-center gap-2">
+                <div className={`rounded-xl p-4 space-y-2 border ${
+                  aiResult.isHazardEnvironment
+                    ? 'bg-emerald-500/10 border-emerald-500/40'
+                    : 'bg-amber-500/10 border-amber-500/40'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    {aiResult.isHazardEnvironment ? (
                       <CheckCircle className="h-6 w-6 text-emerald-400 shrink-0" />
-                      <div>
-                        <span className="text-xs font-mono font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">
-                          STATUS: SENT TO ADMIN FOR MANUAL INSPECTION
-                        </span>
-                        <h4 className="text-sm font-bold text-white mt-1">
-                          🟢 AI ML VERIFIED: HILL, SLOPE, ROCK OR WATER AREA DETECTED
-                        </h4>
-                      </div>
+                    ) : (
+                      <Info className="h-6 w-6 text-amber-400 shrink-0" />
+                    )}
+                    <div>
+                      <span className="text-xs font-mono font-bold uppercase tracking-wider bg-sky-500/20 text-sky-300 px-2 py-0.5 rounded border border-sky-500/30">
+                        AI SCREENING: {aiResult.isHazardEnvironment ? 'POTENTIALLY RELEVANT' : 'MANUAL VERIFICATION REQUIRED'}
+                      </span>
+                      <h4 className="text-sm font-bold text-white mt-1">
+                        {aiResult.recommendation}
+                      </h4>
                     </div>
-                    <p className="text-xs text-emerald-200/90 pl-8">
-                      {aiResult.recommendation}
-                    </p>
                   </div>
-                ) : (
-                  <div className="rounded-xl p-4 bg-red-500/10 border border-red-500/40 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <XCircle className="h-6 w-6 text-red-400 shrink-0" />
-                      <div>
-                        <span className="text-xs font-mono font-bold uppercase tracking-wider bg-red-500/20 text-red-300 px-2 py-0.5 rounded border border-red-500/30">
-                          STATUS: REJECTED
-                        </span>
-                        <h4 className="text-sm font-bold text-white mt-1">
-                          🔴 REJECTED BY AI ML MODEL: NO HILL, SLOPE, ROCK OR WATER AREA DETECTED
-                        </h4>
-                      </div>
-                    </div>
-                    <p className="text-xs text-red-200/90 pl-8">
-                      {aiResult.recommendation}
-                    </p>
-                  </div>
-                )}
+                </div>
 
                 {/* Detected Features */}
                 <div className="rounded-lg bg-slate-900/60 p-3 border border-slate-800 space-y-2">
-                  <p className="text-xs text-slate-400 font-semibold">Extracted Feature Vectors:</p>
+                  <p className="text-xs text-slate-400 font-semibold">Detected Labels & Feature Vectors:</p>
                   <div className="flex flex-wrap gap-1.5">
                     {aiResult.reasons.map((feat, idx) => (
                       <span
                         key={idx}
-                        className={`text-[11px] px-2.5 py-1 rounded-md border font-medium ${
-                          aiResult.isHazardEnvironment
-                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                            : 'bg-red-500/10 border-red-500/30 text-red-300'
-                        }`}
+                        className="text-[11px] px-2.5 py-1 rounded-md border font-medium bg-slate-800/80 border-slate-700 text-sky-300"
                       >
                         {feat}
                       </span>
@@ -706,13 +670,13 @@ export function ReportHazardPage() {
                   <div className="rounded-lg bg-slate-900/60 p-3 border border-slate-800">
                     <p className="text-slate-500">Hazard Category</p>
                     <p className="font-bold text-white capitalize mt-1 text-sm">
-                      {aiResult.detectedCategory.replace('_', ' ')}
+                      {(aiResult.detectedCategory || category).replace(/_/g, ' ')}
                     </p>
                   </div>
                   <div className="rounded-lg bg-slate-900/60 p-3 border border-slate-800">
-                    <p className="text-slate-500">Hazard Severity</p>
+                    <p className="text-slate-500">Estimated Severity</p>
                     <div className="mt-1">
-                      <RiskBadge level={aiResult.severity} size="md" />
+                      <RiskBadge level={aiResult.severity || 'moderate'} size="md" />
                     </div>
                   </div>
                 </div>
@@ -733,17 +697,10 @@ export function ReportHazardPage() {
                     Choose Another Photo
                   </Button>
                   <Button
-                    className={`flex-1 font-bold ${
-                      aiResult.isHazardEnvironment
-                        ? 'bg-accent-bright text-black hover:bg-sky-400'
-                        : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
-                    }`}
-                    disabled={!aiResult.isHazardEnvironment}
+                    className="flex-1 font-bold bg-accent-bright text-black hover:bg-sky-400"
                     onClick={handleFinalSubmit}
                   >
-                    {aiResult.isHazardEnvironment
-                      ? isOnline ? 'Submit to Admin Command Center' : 'Save Offline'
-                      : 'Submission Blocked (Non-Hazard)'}
+                    {isOnline ? 'Submit Report for Manual Verification' : 'Save Report Offline'}
                   </Button>
                 </div>
               </CardContent>

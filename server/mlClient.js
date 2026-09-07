@@ -57,49 +57,14 @@ async function predictRisk(features) {
       source: 'xgboost_ml_model'
     };
   } catch (err) {
-    console.warn(`[ML Client] Prediction service failed: ${err.message}. Using calibrated fallback.`);
-
-    // Calibrated scientific fallback formula (replicates the physical susceptibility model)
-    const slope = features.slope || 35;
-    const rain24 = features.rainfall_24h || 0;
-    const rain72 = features.rainfall_72h || rain24 * 1.5;
-    const soil = features.soil_moisture || 50;
-    const hist = features.historical_landslide_occurrence || 50;
-    const sat = features.satellite_indicator || 50;
-
-    const slopeNorm = Math.min(1, Math.max(0, slope / 55)) * 100;
-    const rainNorm = Math.min(1, Math.max(0, rain24 / 200)) * 100;
-    const rain72Norm = Math.min(1, Math.max(0, rain72 / 300)) * 100;
-
-    const score = Math.round(
-      0.25 * rainNorm +
-      0.15 * rain72Norm +
-      0.22 * soil +
-      0.18 * slopeNorm +
-      0.10 * hist +
-      0.10 * sat
-    );
-
-    let risk_category = 'low';
-    let risk_level = 0;
-    if (score >= 80) { risk_category = 'critical'; risk_level = 3; }
-    else if (score >= 60) { risk_category = 'high'; risk_level = 2; }
-    else if (score >= 40) { risk_category = 'moderate'; risk_level = 1; }
-
+    console.warn(`[ML Client] Prediction service unavailable: ${err.message}`);
     return {
-      risk_level,
-      risk_category,
-      risk_score: score,
-      confidence: 0.85,
-      probabilities: {
-        low: risk_level === 0 ? 0.85 : 0.05,
-        moderate: risk_level === 1 ? 0.85 : 0.05,
-        high: risk_level === 2 ? 0.85 : 0.05,
-        critical: risk_level === 3 ? 0.85 : 0.05
-      },
-      model_version: 'fallback_v1.0.0',
-      prediction_timestamp: new Date().toISOString(),
-      source: 'calibrated_formula_fallback'
+      status: 'offline',
+      prediction_available: false,
+      message: 'AI prediction service is not configured',
+      risk_score: null,
+      risk_category: null,
+      confidence: null
     };
   }
 }
@@ -130,22 +95,19 @@ async function predictBatch(locations) {
 
     return res.data;
   } catch (err) {
-    console.warn(`[ML Client] Batch prediction failed: ${err.message}`);
-    // Fall back to individual predictions
-    const predictions = await Promise.all(locations.map(async loc => {
-      const p = await predictRisk(loc);
-      return {
-        id: loc.id || loc.name,
-        risk_level: p.risk_level,
-        risk_category: p.risk_category,
-        risk_score: p.risk_score,
-        confidence: p.confidence
-      };
-    }));
-
+    console.warn(`[ML Client] Batch prediction unavailable: ${err.message}`);
     return {
-      predictions,
-      model_version: 'fallback_v1.0.0',
+      status: 'offline',
+      prediction_available: false,
+      message: 'AI prediction service is not configured',
+      predictions: locations.map(loc => ({
+        id: loc.id || loc.name,
+        risk_level: null,
+        risk_category: null,
+        risk_score: null,
+        confidence: null
+      })),
+      model_version: 'none',
       prediction_timestamp: new Date().toISOString()
     };
   }

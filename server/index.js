@@ -11,6 +11,7 @@ const multer = require('multer');
 const { connectMongo, getDb } = require('./mongo');
 const { fetchEnvironmentalData, fetchEnvironmentalDataBatch } = require('./dataFetcher');
 const { checkMLHealth, predictRisk, predictBatch } = require('./mlClient');
+const { analyzeImageWithHuggingFace } = require('./services/huggingfaceImageService');
 
 const app = express();
 app.use(cors());
@@ -423,27 +424,64 @@ app.post('/api/notifications/:id/read', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/reports', authMiddleware, async (req, res) => {
-  const { category, description, location, severity, evidenceUrl, captureTimestamp, captureMetadata } = req.body;
-  if (!category || !description) return res.status(400).json({ error: 'Missing fields' });
-  const report = {
-    id: nanoid(),
-    userId: req.user.id,
-    userName: req.user.name,
+  const {
     category,
     description,
     location,
     severity,
+    evidenceUrl,
+    captureTimestamp,
+    captureMetadata,
+    aiAnalysis,
+    detectedCategory
+  } = req.body;
+
+  if (!category || !description) return res.status(400).json({ error: 'Missing fields' });
+
+  // If evidence URL provided, trigger Hugging Face image analysis backend service if not already provided
+  let hfResult = aiAnalysis;
+  if (!hfResult && evidenceUrl) {
+    try {
+      hfResult = await analyzeImageWithHuggingFace(evidenceUrl, category);
+    } catch (e) {
+      console.warn('[Backend Report API] Hugging Face inspection fallback:', e.message);
+    }
+  }
+
+  const report = {
+    id: nanoid(),
+    userId: req.user.id,
+    userName: req.user.name,
+    category: detectedCategory || category,
+    description,
+    location,
+    severity: severity || 'moderate',
     evidenceUrl: evidenceUrl || null,
     captureTimestamp: captureTimestamp || null,
     captureMetadata: captureMetadata || null,
     timestamp: new Date().toISOString(),
-    status: 'submitted'
+    status: 'submitted',
+    // Required AI Inspection Database Fields
+    ai_analysis_status: hfResult?.analysisStatus || 'PENDING',
+    ai_model_name: hfResult?.modelName || process.env.HUGGINGFACE_IMAGE_MODEL || 'google/vit-base-patch16-224',
+    ai_model_version: 'v1.0.0',
+    detected_labels: hfResult?.detectedLabels || [],
+    label_confidence: hfResult?.detectedLabels?.[0]?.confidence || hfResult?.hazardConfidence || 0,
+    predicted_hazard_type: hfResult?.possibleHazardType || 'UNKNOWN',
+    hazard_confidence: hfResult?.hazardConfidence || 0,
+    image_relevance: hfResult?.imageRelevance || 'UNKNOWN',
+    requires_human_review: true,
+    requiresHumanVerification: true,
+    ai_processed_at: hfResult?.processedAt || new Date().toISOString(),
+    ai_error_message: hfResult?.errorMessage || null,
+    summaryMessage: hfResult?.summaryMessage || 'AI screening is temporarily unavailable. Your report has been submitted for manual verification.'
   };
+
   const created = await insertReportDoc(report);
   res.json(created);
 });
 
-// AI Media Inspection Endpoint
+// AI Media Inspection Endpoint using Backend Hugging Face Vision Service
 app.post('/api/inspect-media', authMiddleware, async (req, res) => {
   try {
     const { imageUrl, category, captureMetadata } = req.body;
@@ -454,66 +492,22 @@ app.post('/api/inspect-media', authMiddleware, async (req, res) => {
 
     appendLog('inspect-media', { userId: req.user.id, category, hasMetadata: !!captureMetadata });
 
-    // Call ML service for hazard detection
-    const ML_VISION_URL = process.env.ML_VISION_URL || 'http://127.0.0.1:5001';
-
-    let aiResult;
-    try {
-      const response = await axios.post(`${ML_VISION_URL}/inspect`, {
-        image_url: imageUrl,
-        expected_category: category,
-        metadata: captureMetadata
-      }, {
-        timeout: 10000,
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      aiResult = response.data;
-    } catch (mlError) {
-      console.warn('[AI Inspection] ML service unavailable, using rule-based fallback:', mlError.message);
-
-      // Fallback: Rule-based assessment with uncertainty
-      const hasValidMetadata = captureMetadata && captureMetadata.captureMethod === 'camera_api';
-      const recentCapture = captureMetadata && captureMetadata.captureTimestamp
-        ? (Date.now() - new Date(captureMetadata.captureTimestamp).getTime()) < 60000
-        : false;
-
-      aiResult = {
-        is_relevant: hasValidMetadata && recentCapture,
-        hazard_type: category || 'unknown',
-        apparent_severity: 'moderate',
-        confidence: hasValidMetadata ? 0.65 : 0.45,
-        evidence_status: hasValidMetadata ? 'manual_verification_required' : 'insufficient_evidence',
-        inspection_method: 'rule_based_fallback',
-        reasons: [
-          hasValidMetadata ? 'Captured via camera API' : 'No camera metadata available',
-          recentCapture ? 'Recent capture timestamp' : 'Capture timestamp missing or old',
-          'Full AI vision analysis unavailable - manual review recommended'
-        ],
-        recommendation: hasValidMetadata
-          ? 'Accept for manual verification by authorities'
-          : 'Request recapture with proper camera access'
-      };
-    }
-
-    // Determine final status based on AI confidence and evidence quality
-    let finalStatus = 'submitted';
-    let finalSeverity = aiResult.apparent_severity || 'moderate';
-
-    if (aiResult.confidence >= 0.85 && aiResult.is_relevant) {
-      finalStatus = 'accepted_for_review';
-    } else if (aiResult.confidence < 0.50 || !aiResult.is_relevant) {
-      finalStatus = 'needs_verification';
-    } else {
-      finalStatus = 'manual_verification_required';
-    }
+    // Call Backend Hugging Face Image Analysis Service
+    const hfResult = await analyzeImageWithHuggingFace(imageUrl, category);
 
     res.json({
       success: true,
-      ai_result: aiResult,
-      recommended_status: finalStatus,
-      recommended_severity: finalSeverity,
-      timestamp: new Date().toISOString()
+      analysisStatus: hfResult.analysisStatus,
+      imageRelevance: hfResult.imageRelevance,
+      detectedLabels: hfResult.detectedLabels,
+      possibleHazardType: hfResult.possibleHazardType,
+      hazardConfidence: hfResult.hazardConfidence,
+      requiresHumanVerification: true,
+      modelName: hfResult.modelName,
+      processedAt: hfResult.processedAt,
+      summaryMessage: hfResult.summaryMessage,
+      errorMessage: hfResult.errorMessage || null,
+      ai_result: hfResult
     });
 
   } catch (err) {
@@ -521,7 +515,15 @@ app.post('/api/inspect-media', authMiddleware, async (req, res) => {
     res.status(500).json({
       error: 'Media inspection failed',
       message: err.message,
-      fallback_status: 'manual_verification_required'
+      analysisStatus: 'UNAVAILABLE',
+      imageRelevance: 'UNKNOWN',
+      detectedLabels: [],
+      possibleHazardType: 'UNKNOWN',
+      hazardConfidence: 0,
+      requiresHumanVerification: true,
+      modelName: process.env.HUGGINGFACE_IMAGE_MODEL || 'google/vit-base-patch16-224',
+      processedAt: new Date().toISOString(),
+      summaryMessage: 'AI screening is temporarily unavailable. Your report has been submitted for manual verification.'
     });
   }
 });
