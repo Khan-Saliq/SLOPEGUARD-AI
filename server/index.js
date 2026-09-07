@@ -47,6 +47,11 @@ async function seedDefaultRiskZones() {
       { id: nanoid(), name: 'Itanagar Papum Pare Slope', location: { lat: 27.10, lng: 93.62, district: 'Papum Pare', state: 'Arunachal Pradesh' }, historicalRisk: 55, satelliteIndicator: 50, population: 5200, infrastructureCount: 15 },
       { id: nanoid(), name: 'Imphal West Hill Edge', location: { lat: 24.81, lng: 93.93, district: 'Imphal West', state: 'Manipur' }, historicalRisk: 85, satelliteIndicator: 75, population: 6700, infrastructureCount: 19 }
     ];
+    await zones.insertMany(defaultZones);
+    console.log(`Seeded ${defaultZones.length} default risk zones`);
+  }
+}
+
 async function seedDefaultEvacuationData() {
   const db = getDb();
   
