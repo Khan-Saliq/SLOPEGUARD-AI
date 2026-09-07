@@ -185,6 +185,9 @@ async function getAlertsData() {
 }
 
 async function getReportsData(user) {
+  if (!user) {
+    return (await getDb().collection('reports').find().toArray()) || [];
+  }
   const role = ['admin', 'super_admin'].includes(user.role) ? 'authority' : user.role;
   const q = role === 'authority' ? {} : { userId: user.id };
   return (await getDb().collection('reports').find(q).toArray()) || [];
@@ -380,12 +383,12 @@ app.get('/api/me', authMiddleware, async (req, res) => {
   res.json({ id: user.id || user._id, name: user.name, email: user.email, role: normalizedRole });
 });
 
-app.get('/api/risk-zones', authMiddleware, async (req, res) => {
+app.get('/api/risk-zones', optionalAuthMiddleware, async (req, res) => {
   const data = await getRiskZonesData();
   res.json(data || []);
 });
 
-app.get('/api/risk-zones/:id/environment', authMiddleware, async (req, res) => {
+app.get('/api/risk-zones/:id/environment', optionalAuthMiddleware, async (req, res) => {
   const zone = await getDb().collection('riskZones').findOne({ id: req.params.id });
   if (!zone) return res.status(404).json({ error: 'Risk zone not found' });
   const normalized = normalizeRiskZone(zone);
@@ -397,12 +400,12 @@ app.get('/api/risk-zones/:id/environment', authMiddleware, async (req, res) => {
   });
 });
 
-app.get('/api/alerts', authMiddleware, async (req, res) => {
+app.get('/api/alerts', optionalAuthMiddleware, async (req, res) => {
   const data = await getAlertsData();
   res.json(data || []);
 });
 
-app.get('/api/reports', authMiddleware, async (req, res) => {
+app.get('/api/reports', optionalAuthMiddleware, async (req, res) => {
   const data = await getReportsData(req.user);
   res.json(data || []);
 });

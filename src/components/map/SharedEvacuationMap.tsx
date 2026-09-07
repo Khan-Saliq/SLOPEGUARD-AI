@@ -336,7 +336,7 @@ export function SharedEvacuationMap({
                 <Popup>
                   <div className="p-2 space-y-1">
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded text-white" style={{ background: color }}>
-                      {rd.status.toUpperCase()} ROAD
+                      {(rd?.status || 'operational').toUpperCase()} ROAD
                     </span>
                     <h4 className="text-xs font-bold">{rd.name}</h4>
                     <p className="text-[11px] text-gray-600">District: {rd.district}</p>
@@ -395,7 +395,7 @@ export function SharedEvacuationMap({
                     <div className="p-2 space-y-1.5 max-w-xs">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded text-white" style={{ background: color }}>
-                          {zone.riskLevel.toUpperCase()} RISK ({zone.riskScore}%)
+                          {(zone?.riskLevel || 'moderate').toUpperCase()} RISK ({(zone?.riskScore ?? 0)}%)
                         </span>
                       </div>
                       <h4 className="text-xs font-bold">{zone.name}</h4>

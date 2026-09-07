@@ -42,7 +42,7 @@ export function AlertsTextReport({ selectedZone, alerts }: TextReportProps & { a
           <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/10 p-3 space-y-1.5">
             <div className="flex items-center gap-2 text-emerald-400 font-semibold text-xs">
               <CheckCircle2 className="h-4 w-4" />
-              <span>NORMAL CONDITION — {selectedZone ? selectedZone.name.toUpperCase() : 'ALL SLOPES STABLE & SAFE'}</span>
+              <span>NORMAL CONDITION — {selectedZone?.name ? selectedZone.name.toUpperCase() : 'ALL SLOPES STABLE & SAFE'}</span>
             </div>
             <p className="text-xs text-slate-300">
               No active critical or high hazard alerts in {selectedZone ? selectedZone.name : 'monitored sectors'}. Slope shear strength within safe limits (Safety Factor FS &gt; 1.5).
