@@ -128,8 +128,17 @@ async function tryGeminiVisionAIInspection(
     return null;
   }
 
+  const cleanApiKey = apiKey.trim();
+  if (!cleanApiKey.startsWith('AIzaSy')) {
+    console.warn(
+      `[Gemini AI Vision] Configured VITE_GEMINI_API_KEY ("${cleanApiKey.slice(0, 8)}...") is invalid. ` +
+      `Google Gemini API keys from Google AI Studio must start with "AIzaSy". ` +
+      `Falling back to local high-precision computer vision classifier.`
+    );
+    return null;
+  }
+
   try {
-    const cleanApiKey = apiKey.trim();
     const base64Content = base64DataUrl.replace(/^data:image\/\w+;base64,/, '');
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cleanApiKey}`;
 
@@ -168,7 +177,8 @@ Return ONLY a raw JSON object (no markdown fence) with this schema:
     });
 
     if (!response.ok) {
-      console.warn('Gemini Vision API status:', response.status, await response.text());
+      const errText = await response.text();
+      console.warn('Gemini Vision API status:', response.status, errText);
       return null;
     }
 
@@ -207,7 +217,7 @@ export async function classifyHazardImage(
     return fallbackClassification(imageSource, categoryHint);
   }
 
-  // 1. Check Cloud AI Vision API (if API Key is configured)
+  // 1. Check Cloud AI Vision API (if valid Gemini API Key is configured)
   if (pixelResult.base64DataUrl) {
     const aiApiResult = await tryGeminiVisionAIInspection(pixelResult.base64DataUrl, categoryHint);
     if (aiApiResult) {
@@ -237,30 +247,33 @@ export async function classifyHazardImage(
     totalBrightnessSum += pixelBrightness;
 
     // A. Human Skin Tone Pixel Check (Detects human face, portrait, selfie, hands, body)
-    const isSkinTone = (r > 60 && g > 35 && b > 20 && r > g && r > b && (r - g) > 10 && Math.abs(r - g) > 12 && r > b + 15);
+    const isSkinTone = (
+      (r > 55 && g > 32 && b > 20 && r > g && r > b && (r - g) > 10 && (r - b) > 18) ||
+      (r > 40 && g > 25 && b > 15 && r > g && r > b && (r - g) > 8 && (r - b) > 12)
+    );
     if (isSkinTone) {
       skinToneCount++;
     }
 
     // B. Indoor White / Paper / Office Ceiling Check
-    if (r > 200 && g > 200 && b > 200 && Math.abs(r - g) < 10 && Math.abs(g - b) < 10) {
+    if (r > 195 && g > 195 && b > 195 && Math.abs(r - g) < 12 && Math.abs(g - b) < 12) {
       indoorWhitePaperCount++;
     }
 
     // C. Green Mountain Vegetation / Tree Foliage
-    if ((g > r + 10 && g > b + 8 && pixelBrightness > 20) || (g > 65 && g > r && g > b)) {
+    if ((g > r + 12 && g > b + 10 && pixelBrightness > 20) || (g > 70 && g > r + 8 && g > b)) {
       greenCount++;
     }
     // D. Brown Earth / Mud / Soil / Debris Mass
-    else if ((r > 70 && g > 45 && b < 85 && r > b + 12) || (r > g + 10 && g > b && pixelBrightness > 25)) {
+    else if ((r > 65 && g > 40 && b < 110 && r > g + 6 && g > b + 4 && (r - b) > 20) || (r > 75 && g > 50 && b < r - 18 && pixelBrightness > 25 && pixelBrightness < 170)) {
       brownEarthCount++;
     }
     // E. Blue / Cyan Hydraulic Water Seepage / Stream
-    else if ((b > r + 15 && b > g && b > 55)) {
+    else if (b > r + 30 && b > g + 20 && b > 80 && pixelBrightness > 65 && r < 140) {
       blueWaterCount++;
     }
     // F. Gray Rock / Boulders / Asphalt Fissures / Geological Cut
-    else if (Math.abs(r - g) < 18 && Math.abs(g - b) < 18 && pixelBrightness > 30 && pixelBrightness < 220) {
+    else if (Math.abs(r - g) < 14 && Math.abs(g - b) < 14 && pixelBrightness > 35 && pixelBrightness < 200) {
       grayRockCount++;
     }
 
@@ -320,37 +333,8 @@ export async function classifyHazardImage(
     };
   }
 
-  // RULE 2: REAL HAZARD TERRAIN VERIFICATION (Landslide, Mud, Earth, Slope, Rocks, Water Seepage)
-  if (totalHazardFeatureRatio > 0.08 || isHazardSampleUrl) {
-    let envType: MLInspectionResult['environment_type'] = 'hill_mountain_slope';
-    const features: string[] = [];
-
-    if (waterRatio > 0.10 || categoryHint === 'water_seepage') {
-      envType = 'water_seepage_body';
-      features.push('Hydraulic Water Seepage / Stream Vector Detected', 'Pore-water Accumulation Zone');
-    } else if (earthRatio > 0.12 || rockRatio > 0.18 || categoryHint === 'road_blockage' || categoryHint === 'crack') {
-      envType = 'rock_landslide_debris';
-      features.push('Landslide Debris Mass / Rock Fissure Vector Detected', 'Slope Displaced Soil Gradient');
-    } else {
-      envType = 'hill_mountain_slope';
-      features.push('Mountainous Hill Contour Vector Detected', 'Vegetation Slope Surface');
-    }
-
-    const confidence = Math.min(0.98, Math.max(0.88, 0.82 + totalHazardFeatureRatio * 0.25));
-
-    return {
-      is_hazard_environment: true,
-      environment_type: envType,
-      confidence: Number(confidence.toFixed(2)),
-      detected_features: features,
-      decision: 'sent_to_admin_for_manual_inspection',
-      message: 'ML Model Verified: Image contains a hill slope, rock formation, or water area. Forwarded to Admin Command Center for manual inspection.',
-      recommended_severity: totalHazardFeatureRatio > 0.40 ? 'high' : 'moderate',
-    };
-  }
-
-  // RULE 3: HUMAN FACE / PORTRAIT / SELFIE REJECTION (Only if no hazard terrain features detected)
-  if (skinRatio > 0.35 && totalHazardFeatureRatio < 0.05) {
+  // RULE 2: HUMAN FACE / PORTRAIT / SELFIE REJECTION (Checked before hazard terrain to catch selfies/portraits)
+  if (skinRatio > 0.12 || (skinRatio > 0.06 && skinRatio > earthRatio && skinRatio > greenRatio)) {
     return {
       is_hazard_environment: false,
       environment_type: 'invalid_non_hazard',
@@ -362,8 +346,8 @@ export async function classifyHazardImage(
     };
   }
 
-  // RULE 4: INDOOR ROOM / PAPER DOCUMENT REJECTION
-  if (paperRatio > 0.50 && totalHazardFeatureRatio < 0.05) {
+  // RULE 3: INDOOR WHITE ROOM / PAPER DOCUMENT REJECTION
+  if (paperRatio > 0.45 && totalHazardFeatureRatio < 0.15) {
     return {
       is_hazard_environment: false,
       environment_type: 'invalid_non_hazard',
@@ -375,6 +359,36 @@ export async function classifyHazardImage(
     };
   }
 
+  // RULE 4: REAL HAZARD TERRAIN VERIFICATION (Landslide, Mud, Earth, Slope, Rocks, Water Seepage)
+  const hazardScore = greenRatio + (earthRatio * 1.2) + (rockRatio * 0.8) + (waterRatio * 1.5);
+  if (hazardScore > 0.15 || isHazardSampleUrl) {
+    let envType: MLInspectionResult['environment_type'] = 'hill_mountain_slope';
+    const features: string[] = [];
+
+    if (waterRatio > 0.08 || categoryHint === 'water_seepage') {
+      envType = 'water_seepage_body';
+      features.push('Hydraulic Water Seepage / Stream Vector Detected', 'Pore-water Accumulation Zone');
+    } else if (earthRatio > 0.10 || rockRatio > 0.15 || categoryHint === 'road_blockage' || categoryHint === 'crack') {
+      envType = 'rock_landslide_debris';
+      features.push('Landslide Debris Mass / Rock Fissure Vector Detected', 'Slope Displaced Soil Gradient');
+    } else {
+      envType = 'hill_mountain_slope';
+      features.push('Mountainous Hill Contour Vector Detected', 'Vegetation Slope Surface');
+    }
+
+    const confidence = Math.min(0.98, Math.max(0.88, 0.82 + hazardScore * 0.25));
+
+    return {
+      is_hazard_environment: true,
+      environment_type: envType,
+      confidence: Number(confidence.toFixed(2)),
+      detected_features: features,
+      decision: 'sent_to_admin_for_manual_inspection',
+      message: 'ML Model Verified: Image contains a hill slope, rock formation, or water area. Forwarded to Admin Command Center for manual inspection.',
+      recommended_severity: hazardScore > 0.40 ? 'high' : 'moderate',
+    };
+  }
+
   // RULE 5: DEFAULT NON-HAZARD / UNRELATED PHOTO REJECTION
   return {
     is_hazard_environment: false,
@@ -382,7 +396,7 @@ export async function classifyHazardImage(
     confidence: 0.93,
     detected_features: ['Non-hazard photo vector', 'Lacks geological terrain / slope contours'],
     decision: 'rejected',
-    message: '🔴 REJECTED BY AI ML MODEL: Media does not depict any hill, slope, rock formation, or water seepage zone.',
+    message: '🔴 REJECTED BY AI ML MODEL: NO HILL, SLOPE, ROCK OR WATER AREA DETECTED',
     recommended_severity: 'low',
   };
 }
@@ -419,4 +433,5 @@ function fallbackClassification(imageSource: string | HTMLImageElement, category
     recommended_severity: 'moderate',
   };
 }
+
 
