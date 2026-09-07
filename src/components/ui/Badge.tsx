@@ -22,7 +22,8 @@ export function RiskBadge({ level, size = 'sm', pulse }: BadgeProps) {
   );
 }
 
-export function StatusBadge({ status, className }: { status: string; className?: string }) {
+export function StatusBadge({ status = 'unknown', className }: { status?: string; className?: string }) {
+  const safeStatus = status || 'unknown';
   const colors: Record<string, string> = {
     operational: 'bg-low/20 text-[#6a9a78] border-low/30',
     vulnerable: 'bg-moderate/20 text-[#d4b05a] border-moderate/30',
@@ -48,13 +49,14 @@ export function StatusBadge({ status, className }: { status: string; className?:
   };
 
   return (
-    <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize', colors[status] || 'bg-card-hover text-dim border-border/30', className)}>
-      {status.replace(/_/g, ' ')}
+    <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize', colors[safeStatus] || 'bg-card-hover text-dim border-border/30', className)}>
+      {safeStatus.replace(/_/g, ' ')}
     </span>
   );
 }
 
-export function DataSourceBadge({ source }: { source: string }) {
+export function DataSourceBadge({ source = 'sensor' }: { source?: string }) {
+  const safeSource = source || 'sensor';
   const labels: Record<string, string> = {
     ai_prediction: 'AI Prediction',
     sensor: 'Sensor Data',
@@ -68,8 +70,8 @@ export function DataSourceBadge({ source }: { source: string }) {
     citizen_report: 'bg-high/20 text-[#e09050]',
   };
   return (
-    <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-medium', colors[source])}>
-      {labels[source] || source}
+    <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-medium', colors[safeSource])}>
+      {labels[safeSource] || safeSource}
     </span>
   );
 }

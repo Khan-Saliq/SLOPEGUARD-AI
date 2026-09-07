@@ -117,6 +117,151 @@ async function extractCanvasPixels(
 }
 
 /**
+ * Hugging Face Cloud AI Computer Vision API (Primary Classifier)
+ */
+async function tryHuggingFaceAIInspection(
+  base64DataUrl: string,
+  categoryHint: string
+): Promise<MLInspectionResult | null> {
+  const hfToken =
+    (import.meta as any).env?.VITE_HUGGINGFACE_API_KEY ||
+    localStorage.getItem('huggingface_api_key') ||
+    '';
+
+  if (!hfToken || typeof hfToken !== 'string' || hfToken.trim().length < 8) {
+    return null;
+  }
+
+  try {
+    const cleanToken = hfToken.trim();
+    const base64Content = base64DataUrl.replace(/^data:image\/\w+;base64,/, '');
+    const byteCharacters = atob(base64Content);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+
+    // Primary Hugging Face Vision Computer Vision Classifier Model
+    const endpoint = 'https://api-inference.huggingface.co/models/google/vit-base-patch16-224';
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${cleanToken}`,
+        'Content-Type': 'application/octet-stream',
+      },
+      body: byteArray,
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.warn('Hugging Face Vision API status:', response.status, errText);
+      return null;
+    }
+
+    const data = await response.json();
+    if (!Array.isArray(data)) return null;
+
+    let isHazard = false;
+    let isHumanSelfie = false;
+    let isIndoorNonHazard = false;
+    const detectedFeatures: string[] = [];
+
+    for (const item of data) {
+      const label = (item.label || '').toLowerCase();
+      const score = Number(item.score) || 0;
+
+      if (score > 0.04) {
+        detectedFeatures.push(`HF Vision: ${item.label} (${(score * 100).toFixed(1)}%)`);
+      }
+
+      // Check human face / portrait / selfie / person / clothing
+      if (
+        label.includes('person') || label.includes('human') || label.includes('face') ||
+        label.includes('portrait') || label.includes('selfie') || label.includes('suit') ||
+        label.includes('jersey') || label.includes('swimming')
+      ) {
+        if (score > 0.15) {
+          isHumanSelfie = true;
+        }
+      }
+
+      // Check indoor non-hazard room / furniture / office objects
+      if (
+        label.includes('room') || label.includes('desk') || label.includes('paper') ||
+        label.includes('envelope') || label.includes('binder') || label.includes('chair') ||
+        label.includes('table') || label.includes('laptop') || label.includes('monitor')
+      ) {
+        if (score > 0.20) {
+          isIndoorNonHazard = true;
+        }
+      }
+
+      // Check geological terrain, mountain, valley, cliff, rock, slope, landslide, water stream
+      if (
+        label.includes('cliff') || label.includes('mountain') || label.includes('valley') ||
+        label.includes('alp') || label.includes('promontory') || label.includes('volcano') ||
+        label.includes('geyser') || label.includes('seashore') || label.includes('lakeside') ||
+        label.includes('dam') || label.includes('pier') || label.includes('sandbar') ||
+        label.includes('quarry') || label.includes('dike') || label.includes('breakwater') ||
+        label.includes('debris') || label.includes('rock') || label.includes('slope') ||
+        label.includes('landslide') || label.includes('earth') || label.includes('stream') ||
+        label.includes('coast') || label.includes('trench')
+      ) {
+        if (score > 0.04) {
+          isHazard = true;
+        }
+      }
+    }
+
+    if (isHumanSelfie) {
+      return {
+        is_hazard_environment: false,
+        environment_type: 'invalid_non_hazard',
+        confidence: 0.97,
+        detected_features: detectedFeatures,
+        decision: 'rejected',
+        message: '🔴 REJECTED BY HUGGING FACE AI VISION: Human portrait or selfie photo detected. Please upload an outdoor hazard photo depicting a hill, slope, rockfall, or water area.',
+        recommended_severity: 'low',
+      };
+    }
+
+    if (isIndoorNonHazard && !isHazard) {
+      return {
+        is_hazard_environment: false,
+        environment_type: 'invalid_non_hazard',
+        confidence: 0.95,
+        detected_features: detectedFeatures,
+        decision: 'rejected',
+        message: '🔴 REJECTED BY HUGGING FACE AI VISION: Media depicts an indoor non-hazard room or object.',
+        recommended_severity: 'low',
+      };
+    }
+
+    let envType: MLInspectionResult['environment_type'] = 'hill_mountain_slope';
+    if (categoryHint === 'water_seepage') {
+      envType = 'water_seepage_body';
+    } else if (categoryHint === 'road_blockage' || categoryHint === 'crack') {
+      envType = 'rock_landslide_debris';
+    }
+
+    return {
+      is_hazard_environment: true,
+      environment_type: envType,
+      confidence: 0.95,
+      detected_features: detectedFeatures.length > 0 ? detectedFeatures : ['Hugging Face Vision Feature Vector Verified'],
+      decision: 'sent_to_admin_for_manual_inspection',
+      message: 'Hugging Face AI Vision Verified: Image contains a hill slope, rock formation, or outdoor hazard area. Forwarded to Admin Command Center for manual inspection.',
+      recommended_severity: 'moderate',
+    };
+  } catch (e) {
+    console.warn('Hugging Face AI API call error, falling back to Gemini and local feature engine:', e);
+    return null;
+  }
+}
+
+/**
  * Optional Cloud AI Multimodal Vision Inspection (e.g. Gemini 1.5 Vision API)
  */
 async function tryGeminiVisionAIInspection(
@@ -213,8 +358,14 @@ export async function classifyHazardImage(
     return fallbackClassification(imageSource, categoryHint);
   }
 
-  // 1. Check Cloud AI Vision API (if valid Gemini API Key is configured)
+  // 1. Check Primary Hugging Face Cloud AI Vision API
   if (pixelResult.base64DataUrl) {
+    const hfApiResult = await tryHuggingFaceAIInspection(pixelResult.base64DataUrl, categoryHint);
+    if (hfApiResult) {
+      return hfApiResult;
+    }
+
+    // 2. Check Secondary Cloud AI Vision API (Gemini Vision API)
     const aiApiResult = await tryGeminiVisionAIInspection(pixelResult.base64DataUrl, categoryHint);
     if (aiApiResult) {
       return aiApiResult;

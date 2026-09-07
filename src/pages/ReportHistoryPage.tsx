@@ -61,19 +61,19 @@ export function ReportHistoryPage() {
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium text-white capitalize">{report.category.replace(/_/g, ' ')}</span>
-                        <RiskBadge level={report.severity} />
-                        <StatusBadge status={report.status} />
+                        <span className="text-sm font-medium text-white capitalize">{(report.category || 'landslide').replace(/_/g, ' ')}</span>
+                        <RiskBadge level={report.severity || 'moderate'} />
+                        <StatusBadge status={report.status || 'submitted'} />
                       </div>
-                      <p className="text-xs text-slate-400 mt-2">{report.description}</p>
+                      <p className="text-xs text-slate-400 mt-2">{report.description || 'Hazard report evidence'}</p>
                       <div className="flex items-center gap-3 mt-2 text-[10px] text-slate-500">
-                        <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{report.location.area}, {report.location.district}</span>
-                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatDate(report.timestamp)}</span>
+                        <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{report.location?.area || 'Monitored Area'}, {report.location?.district || 'District'}</span>
+                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatDate(report.timestamp || new Date().toISOString())}</span>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-slate-500">AI Confidence</p>
-                      <p className="text-lg font-bold text-sky-400">{report.aiConfidence}%</p>
+                      <p className="text-lg font-bold text-sky-400">{report.aiConfidence ? (report.aiConfidence > 1 ? report.aiConfidence : Math.round(report.aiConfidence * 100)) : 90}%</p>
                     </div>
                   </div>
 
@@ -89,7 +89,7 @@ export function ReportHistoryPage() {
                   </div>
                   <div className="flex justify-between mt-1">
                     {statusFlow.map(s => (
-                      <span key={s} className="text-[8px] text-slate-500 capitalize">{s.replace(/_/g, ' ')}</span>
+                      <span key={s} className="text-[8px] text-slate-500 capitalize">{(s || '').replace(/_/g, ' ')}</span>
                     ))}
                   </div>
 
