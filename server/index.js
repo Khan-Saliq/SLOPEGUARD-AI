@@ -442,7 +442,23 @@ app.post('/api/assignments', authMiddleware, requireRole('authority','field_offi
       const creatorId = report.userId;
       // avoid duplicate if assignee is same as creator
       if (!assigneeId || assigneeId !== creatorId) {
-        const creatorNote = { id: nanoid(), userId: creatorId, type: 'assignment_created_for_report', message: `Your report ${reportId} has been assigned`, read: false, createdAt: new Date().toISOString(), reportId, reportCreatorId: creatorId, meta: { reportId, assignmentId: assignment.id } };
+        let assigneeName = 'Command Center Staff / Authority Officer';
+        if (assigneeId) {
+          const assigneeObj = await getDb().collection('users').findOne({ id: assigneeId });
+          if (assigneeObj && assigneeObj.name) assigneeName = assigneeObj.name;
+        }
+        const creatorNote = {
+          id: nanoid(),
+          userId: creatorId,
+          type: 'assignment_created_for_report',
+          title: 'Report Assigned to Officer',
+          message: `Your reported hazard (Report #${reportId}) has been assigned to ${assigneeName} for immediate field inspection & action.`,
+          read: false,
+          createdAt: new Date().toISOString(),
+          reportId,
+          reportCreatorId: creatorId,
+          meta: { reportId, assignmentId: assignment.id, assigneeId, assigneeName }
+        };
         await getDb().collection('notifications').insertOne(creatorNote);
         sendSse(creatorId, 'notification', creatorNote);
       }
@@ -673,6 +689,40 @@ app.post('/api/reports', authMiddleware, async (req, res) => {
     } catch (e) {
       console.warn('Road blockage auto-registration notice:', e.message);
     }
+  }
+  // Notify all Admins / Super Admins / Authority staff that a citizen has submitted a new report
+  try {
+    const adminUsers = await getDb().collection('users').find({
+      role: { $in: ['admin', 'super_admin', 'authority'] }
+    }).toArray();
+
+    const reportCategoryStr = (detectedCategory || category || 'hazard').toUpperCase().replace('_', ' ');
+    const submitterName = req.user.name || 'Citizen';
+
+    for (const adminUser of adminUsers) {
+      const adminId = adminUser.id || adminUser._id;
+      const adminNote = {
+        id: nanoid(),
+        userId: adminId,
+        type: 'report_submitted',
+        title: 'New Citizen Hazard Report Submitted',
+        message: `User "${submitterName}" submitted a new hazard report (#${created.id}): "${description.slice(0, 70)}" [${reportCategoryStr}]`,
+        read: false,
+        createdAt: new Date().toISOString(),
+        reportId: created.id,
+        reportCreatorId: req.user.id,
+        meta: {
+          reportId: created.id,
+          submittedBy: submitterName,
+          category: detectedCategory || category,
+          severity: created.severity
+        }
+      };
+      await getDb().collection('notifications').insertOne(adminNote);
+      sendSse(adminId, 'notification', adminNote);
+    }
+  } catch (e) {
+    appendLog('notify-admins-report-submitted-failed', { err: e && e.message });
   }
 
   res.json(created);
