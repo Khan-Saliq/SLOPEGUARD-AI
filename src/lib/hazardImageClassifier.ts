@@ -71,9 +71,9 @@ async function extractCanvasPixels(
           resolve(null);
           return;
         }
-        ctx.drawImage(video, 0, 0, 120, 120);
+        ctx.drawImage(video, 0, 0, 384, 384);
         const base64DataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        resolve({ data: ctx.getImageData(0, 0, 120, 120).data, width: 120, height: 120, base64DataUrl });
+        resolve({ data: ctx.getImageData(0, 0, 384, 384).data, width: 384, height: 384, base64DataUrl });
       };
 
       video.onerror = () => {
@@ -95,18 +95,16 @@ async function extractCanvasPixels(
     const processLoadedImage = () => {
       try {
         const canvas = document.createElement('canvas');
-        canvas.width = 120;
-        canvas.height = 120;
+        canvas.width = 384;
+        canvas.height = 384;
         const ctx = canvas.getContext('2d');
         if (!ctx) {
           resolve(null);
           return;
         }
-        ctx.drawImage(img, 0, 0, 120, 120);
-        const base64DataUrl = typeof imageSource === 'string' && imageSource.startsWith('data:image/')
-          ? imageSource
-          : canvas.toDataURL('image/jpeg', 0.85);
-        resolve({ data: ctx.getImageData(0, 0, 120, 120).data, width: 120, height: 120, base64DataUrl });
+        ctx.drawImage(img, 0, 0, 384, 384);
+        const base64DataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        resolve({ data: ctx.getImageData(0, 0, 384, 384).data, width: 384, height: 384, base64DataUrl });
       } catch (e) {
         resolve(null);
       }

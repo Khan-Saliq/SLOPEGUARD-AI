@@ -242,7 +242,7 @@ export function ReportHazardPage() {
         confidence: Math.round((mlResult.hazardConfidence || mlResult.confidence) * 100),
         detectedCategory: category,
         evidenceStatus: mlResult.decision,
-        reasons: mlResult.detected_features.length > 0 ? mlResult.detected_features : ['Hugging Face Vision Vector Verified'],
+        reasons: mlResult.detected_features.length > 0 ? mlResult.detected_features : (mlResult.analysisStatus === 'UNAVAILABLE' ? ['AI Service Offline / Pending Token'] : ['General Landscape / Unspecified Evidence']),
         recommendation: mlResult.summaryMessage || mlResult.message,
         isHazardEnvironment: mlResult.is_hazard_environment,
         environmentType: mlResult.environment_type,
