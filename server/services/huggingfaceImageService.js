@@ -197,8 +197,8 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', col
 
   const totalTerrainRatio = earthRatio + rockRatio + greenRatio + waterRatio;
 
-  // 1. Human Portrait / Selfie Rejection
-  if (skinRatio > 0.10 && skinRatio > totalTerrainRatio) {
+  // 1. Human Portrait / Selfie Rejection (Strict threshold > 0.05)
+  if (skinRatio > 0.05) {
     return {
       analysisStatus: 'COMPLETED',
       imageRelevance: 'IRRELEVANT',
@@ -216,7 +216,7 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', col
   }
 
   // 2. Indoor Document / Object Rejection
-  if (paperRatio > 0.25 && paperRatio > totalTerrainRatio) {
+  if (paperRatio > 0.20) {
     return {
       analysisStatus: 'COMPLETED',
       imageRelevance: 'IRRELEVANT',
@@ -232,8 +232,8 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', col
     };
   }
 
-  // 3. Natural Terrain Verification (Mountain, Hill, Slope, Rock, Water)
-  if (totalTerrainRatio > 0.18) {
+  // 3. Natural Terrain Verification (Mountain, Hill, Slope, Rock, Water — Strict > 0.35)
+  if (totalTerrainRatio >= 0.35) {
     let hazType = 'POSSIBLE_LANDSLIDE';
     let label1 = 'mountain slope, cliff';
     let label2 = 'soil, rock debris zone';
