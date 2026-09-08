@@ -48,7 +48,7 @@ function matchFilter(item, filter = {}) {
 function createLocalCollection(name) {
   if (!localData[name]) localData[name] = [];
   return {
-    async find(filter = {}) {
+    find(filter = {}) {
       let items = localData[name].filter(item => matchFilter(item, filter));
       return {
         sort(sortObj = {}) {
@@ -58,7 +58,17 @@ function createLocalCollection(name) {
             const dir = sortObj[key];
             items.sort((a, b) => (a[key] > b[key] ? dir : -dir));
           }
-          return { toArray: async () => items };
+          return {
+            limit(n) {
+              const sliced = items.slice(0, n);
+              return { toArray: async () => sliced };
+            },
+            toArray: async () => items,
+          };
+        },
+        limit(n) {
+          const sliced = items.slice(0, n);
+          return { toArray: async () => sliced };
         },
         toArray: async () => items,
       };
@@ -87,18 +97,34 @@ function createLocalCollection(name) {
     async createIndex() {
       return true;
     },
-    async updateOne(filter, update) {
+    async updateOne(filter, update, options = {}) {
       const idx = localData[name].findIndex(item => matchFilter(item, filter));
       if (idx !== -1 && update && update.$set) {
         localData[name][idx] = { ...localData[name][idx], ...update.$set };
         saveLocalDb(localData);
+      } else if (idx === -1 && options.upsert && update && update.$set) {
+        const _id = filter.id || filter._id || String(Date.now());
+        localData[name].push({ ...update.$set, _id, id: _id });
+        saveLocalDb(localData);
       }
       return { modifiedCount: idx !== -1 ? 1 : 0 };
     },
-    async deleteMany(filter) {
+    async updateMany(filter, update) {
+      let count = 0;
+      localData[name].forEach((item, idx) => {
+        if (matchFilter(item, filter) && update && update.$set) {
+          localData[name][idx] = { ...localData[name][idx], ...update.$set };
+          count++;
+        }
+      });
+      if (count > 0) saveLocalDb(localData);
+      return { modifiedCount: count };
+    },
+    async deleteMany(filter = {}) {
+      const initialCount = localData[name].length;
       localData[name] = localData[name].filter(item => !matchFilter(item, filter));
       saveLocalDb(localData);
-      return { acknowledged: true };
+      return { deletedCount: initialCount - localData[name].length };
     },
     async findOneAndUpdate(filter, update, options = {}) {
       const idx = localData[name].findIndex(item => matchFilter(item, filter));

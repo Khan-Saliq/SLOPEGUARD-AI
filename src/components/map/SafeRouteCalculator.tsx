@@ -524,18 +524,92 @@ export function SafeRouteCalculator({ isAdmin = false, onSelectRoute }: SafeRout
                 </div>
               </div>
 
-              {/* Road Status Quick Updater */}
-              <div className="pt-2 border-t border-red-500/20 space-y-2">
-                <p className="text-[11px] font-semibold text-foreground">Quick Road Status Control:</p>
-                <div className="flex items-center gap-2 flex-wrap text-xs">
+              {/* Controlled Road & Route Safety Simulation Controls */}
+              <div className="pt-2 border-t border-red-500/20 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-bold text-red-300 uppercase tracking-wider">Controlled Road Simulation Presets:</p>
+                  <span className="text-[9px] font-mono text-slate-400">Re-evaluates Safety Automatically</span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await Promise.all([
+                        updateRoadStatus('r1', 'operational', 'Normal conditions restored'),
+                        updateRoadStatus('r2', 'operational', 'Normal conditions restored')
+                      ]);
+                      if (originPoint && destPoint) runRouteCalculation(originPoint, destPoint);
+                    }}
+                    className="p-1.5 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border border-emerald-500/40 text-[10px] font-bold text-center"
+                  >
+                    🟢 Normal Road Status
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await updateRoadStatus('r1', 'blocked', 'Landslide blockage on NH-44');
+                      if (originPoint && destPoint) runRouteCalculation(originPoint, destPoint);
+                    }}
+                    className="p-1.5 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 border border-red-500/40 text-[10px] font-bold text-center"
+                  >
+                    🔴 Block Primary (NH-44)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await updateRoadStatus('r2', 'damaged', 'Structural slope damage');
+                      if (originPoint && destPoint) runRouteCalculation(originPoint, destPoint);
+                    }}
+                    className="p-1.5 rounded bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/40 text-[10px] font-bold text-center"
+                  >
+                    ⚠️ Damaged Road (SH-1)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await Promise.all([
+                        updateRoadStatus('r1', 'blocked', 'Critical slope collapse'),
+                        updateRoadStatus('r2', 'vulnerable', 'Debris flow hazard')
+                      ]);
+                      if (originPoint && destPoint) runRouteCalculation(originPoint, destPoint);
+                    }}
+                    className="p-1.5 rounded bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 border border-orange-500/40 text-[10px] font-bold text-center"
+                  >
+                    🌋 Critical Risk Corridor
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await Promise.all([
+                        updateRoadStatus('r1', 'blocked', 'Total isolation'),
+                        updateRoadStatus('r2', 'blocked', 'Total isolation'),
+                        updateRoadStatus('r3', 'blocked', 'Total isolation')
+                      ]);
+                      if (originPoint && destPoint) runRouteCalculation(originPoint, destPoint);
+                    }}
+                    className="p-1.5 rounded bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 border border-purple-500/40 text-[10px] font-bold text-center col-span-2 sm:col-span-1"
+                  >
+                    🛑 No Safe Route (Isolate)
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap text-xs pt-1">
                   {roads.slice(0, 4).map(rd => (
-                    <div key={rd.id} className="p-2 rounded bg-card/80 border border-border/60 flex items-center justify-between gap-2 text-foreground">
-                      <span className="font-semibold text-[11px]">{rd.name}</span>
+                    <div key={rd.id} className="p-2 rounded bg-card/80 border border-border/60 flex items-center justify-between gap-2 text-foreground flex-1 min-w-[140px]">
+                      <span className="font-semibold text-[11px] truncate">{rd.name.split(' ')[0]}</span>
                       <div className="flex items-center gap-1">
                         {(['operational', 'vulnerable', 'blocked', 'damaged'] as RoadStatus[]).map(st => (
                           <button
                             key={st}
-                            onClick={() => updateRoadStatus(rd.id, st, `Status updated by Admin`)}
+                            onClick={async () => {
+                              await updateRoadStatus(rd.id, st, `Status updated by Admin`);
+                              if (originPoint && destPoint) runRouteCalculation(originPoint, destPoint);
+                            }}
                             className={`px-1.5 py-0.5 text-[9px] font-bold rounded uppercase ${
                               rd.status === st ? 'bg-primary text-primary-foreground shadow-xs' : 'bg-muted/60 text-muted-foreground hover:bg-muted'
                             }`}

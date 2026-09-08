@@ -56,11 +56,12 @@ async function runAutomatedPipeline() {
     }));
 
     const environmentalMap = await fetchEnvironmentalDataBatch(locationsToFetch);
+    const getEnv = (key) => (environmentalMap && typeof environmentalMap.get === 'function') ? (environmentalMap.get(key) || {}) : (environmentalMap && environmentalMap[key] ? environmentalMap[key] : {});
 
     // 3. Prepare ML input feature vectors
     const mlBatchInput = zones.map(z => {
       const locKey = z.id || z._id;
-      const env = environmentalMap.get(locKey) || {};
+      const env = getEnv(locKey);
       const lat = z.location?.lat || 25.57;
       const lng = z.location?.lng || 91.88;
 
@@ -97,15 +98,15 @@ async function runAutomatedPipeline() {
     for (const z of zones) {
       const zId = z.id || z._id;
       const pred = predictions.find(p => p.id === zId) || {};
-      const env = environmentalMap.get(zId) || {};
+      const env = getEnv(zId);
 
       const riskScore = pred.risk_score !== undefined && pred.risk_score !== null
         ? Math.round(pred.risk_score)
         : Math.min(99, Math.round((env.rainfall_24h || 50) * 0.4 + (z.slope || 35) * 0.5));
 
-      let riskLevel = pred.risk_category?.toLowerCase() || 'moderate';
-      if (!['low', 'moderate', 'high', 'critical'].includes(riskLevel)) {
-        riskLevel = riskScore >= 85 ? 'critical' : riskScore >= 70 ? 'high' : riskScore >= 45 ? 'moderate' : 'low';
+      let riskLevel = riskScore >= 85 ? 'critical' : riskScore >= 70 ? 'high' : riskScore >= 45 ? 'moderate' : 'low';
+      if (pred.risk_category && ['low', 'moderate', 'high', 'critical'].includes(pred.risk_category.toLowerCase())) {
+        riskLevel = pred.risk_category.toLowerCase();
       }
 
       const updatedZone = {

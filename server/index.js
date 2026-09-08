@@ -1232,6 +1232,48 @@ app.get('/api/prediction-history', optionalAuthMiddleware, async (req, res) => {
   }
 });
 
+// Simulation & Demonstration Engine APIs
+const { TEST_SCENARIOS } = require('./data/scenarios');
+const { getSimulationStatus, runSimulationScenario, resetSimulationMode } = require('./services/simulationEngine');
+
+app.get('/api/simulation/scenarios', optionalAuthMiddleware, (req, res) => {
+  res.json(TEST_SCENARIOS);
+});
+
+app.get('/api/simulation/status', optionalAuthMiddleware, (req, res) => {
+  res.json(getSimulationStatus());
+});
+
+app.post('/api/simulation/run-scenario', optionalAuthMiddleware, async (req, res) => {
+  try {
+    const { scenarioId, customFeatures } = req.body || {};
+    const result = await runSimulationScenario(scenarioId, customFeatures);
+    res.json(result);
+  } catch (err) {
+    console.error('Simulation run error:', err);
+    res.status(500).json({ error: err.message || 'Failed to execute simulation scenario' });
+  }
+});
+
+app.post('/api/simulation/reset', optionalAuthMiddleware, async (req, res) => {
+  try {
+    const result = await resetSimulationMode();
+    res.json(result);
+  } catch (err) {
+    console.error('Simulation reset error:', err);
+    res.status(500).json({ error: err.message || 'Failed to reset simulation mode' });
+  }
+});
+
+app.get('/api/audit-logs', optionalAuthMiddleware, async (req, res) => {
+  try {
+    const logs = (await getDb().collection('auditLogs').find().sort({ timestamp: -1 }).limit(50).toArray()) || [];
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch audit logs' });
+  }
+});
+
 const { startAutoScheduler } = require('./services/autoScheduler');
 
 const PORT = process.env.PORT || 4000;

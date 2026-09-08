@@ -22,7 +22,9 @@ function calculateDistanceKm(lat1, lon1, lat2, lon2) {
  * Evaluate safety of a route geometry
  */
 function evaluateRouteSafety(route, roads = [], incidents = [], riskZones = []) {
-  const geometry = route.geometry || [];
+  const geometry = Array.isArray(route)
+    ? route.map(pt => (Array.isArray(pt) ? pt : [pt.lng || pt.longitude || 0, pt.lat || pt.latitude || 0]))
+    : (route?.geometry || []);
   const blockedRoads = [];
   const dangerousSegments = [];
   const nearbyIncidents = [];
