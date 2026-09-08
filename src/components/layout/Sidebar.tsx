@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Map, Bell, BarChart3, Route,
-  Camera, History, Mountain, WifiOff, FileWarning, X,
+  Mountain, WifiOff, X,
 } from 'lucide-react';
 import { useApp } from '../../hooks/useApp';
 import { Button } from '../ui/Button';
@@ -13,20 +13,20 @@ import { useEffect, useState } from 'react';
 const authorityLinks = [
   { to: '/dashboard', icon: LayoutDashboard, key: 'dashboard' },
   { to: '/map', icon: Map, key: 'map' },
-  { to: '/alerts', icon: Bell, key: 'alerts' },
-  { to: '/notifications', icon: Bell, key: 'notifications' },
-  { to: '/assignments', icon: FileWarning, key: 'assignments' },
-  { to: '/analytics', icon: BarChart3, key: 'analytics' },
   { to: '/roads', icon: Route, key: 'roads' },
+  { to: '/safe-route', icon: Route, key: 'safeRoute' },
+  { to: '/alerts', icon: Bell, key: 'alerts' },
+  { to: '/analytics', icon: BarChart3, key: 'analytics' },
+  { to: '/notifications', icon: Bell, key: 'notifications' },
 ];
 
 const citizenLinks = [
-  { to: '/citizen', icon: Camera, key: 'report' },
-  { to: '/report', icon: Mountain, key: 'reportHazard' },
-  { to: '/history', icon: History, key: 'history' },
-  { to: '/notifications', icon: Bell, key: 'notifications' },
-  { to: '/alerts', icon: Bell, key: 'alerts' },
+  { to: '/citizen', icon: Mountain, key: 'citizenHome' },
+  { to: '/dashboard', icon: LayoutDashboard, key: 'dashboard' },
+  { to: '/map', icon: Map, key: 'map' },
   { to: '/safe-route', icon: Route, key: 'safeRoute' },
+  { to: '/alerts', icon: Bell, key: 'alerts' },
+  { to: '/notifications', icon: Bell, key: 'notifications' },
 ];
 
 interface SidebarProps {
@@ -65,15 +65,13 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const label = (key: string) => {
     const map: Record<string, string> = {
       dashboard: 'Dashboard',
-      map: 'Map',
+      map: 'Live GIS Map',
       alerts: 'Alerts',
       analytics: 'Analytics',
-      roads: 'Roads',
-      assignments: 'Assignments',
-      report: 'Citizen Portal',
-      reportHazard: 'Report Hazard',
-      history: 'My Reports',
-      safeRoute: 'Safe Routes',
+      roads: 'Roads & Restrictions',
+      citizenHome: 'Citizen Portal',
+      safeRoute: 'Safe Evacuation Routes',
+      notifications: 'Notifications',
       settings: 'Settings',
     };
     return map[key] ?? key;

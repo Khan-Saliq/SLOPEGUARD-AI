@@ -577,6 +577,19 @@ export function SafeRouteCalculator({ isAdmin = false, onSelectRoute }: SafeRout
               </span>
             </div>
 
+            {/* No Verified Safe Route Fallback Advisory */}
+            {((activeStatus as string) === 'UNSAFE' || activeStatus === 'BLOCKED' || activeStatus === 'WARNING' || (activeRouteResult?.warnings && activeRouteResult.warnings.some(w => w.toUpperCase().includes('UNSAFE')))) && (
+              <div className="p-4 bg-red-500/20 border-2 border-red-500/60 rounded-xl space-y-1.5 text-xs">
+                <div className="flex items-center gap-2 text-red-400 font-extrabold text-sm">
+                  <AlertOctagon className="w-5 h-5 shrink-0 animate-pulse text-red-500" />
+                  <span>NO VERIFIED SAFE ROUTE AVAILABLE</span>
+                </div>
+                <p className="text-red-200 font-medium leading-relaxed">
+                  No verified safe route is currently available. Please remain in a safe location and follow official emergency instructions.
+                </p>
+              </div>
+            )}
+
             {/* Stats Metrics */}
             <div className="grid grid-cols-2 gap-3 text-center">
               <div className="p-3 rounded-lg bg-card-hover border border-border/50">

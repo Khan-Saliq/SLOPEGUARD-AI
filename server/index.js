@@ -271,6 +271,16 @@ function sendSse(userId, event, data) {
   appendLog('sse-send', { userId, event, count: list.length, data });
 }
 
+function broadcastSse(event, data) {
+  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const [userId, list] of sseClients.entries()) {
+    list.forEach((res) => {
+      try { res.write(payload); } catch (e) { /* ignore */ }
+    });
+  }
+  appendLog('sse-broadcast', { event, totalUsers: sseClients.size, data });
+}
+
 app.get('/api/stream', authMiddleware, (req, res) => {
   // SSE headers
   res.set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
@@ -1212,11 +1222,25 @@ app.post('/api/reset', authMiddleware, requireRole('admin', 'authority'), async 
   res.json({ ok: true });
 });
 
+// Automated ML Prediction History API
+app.get('/api/prediction-history', optionalAuthMiddleware, async (req, res) => {
+  try {
+    const history = (await getDb().collection('predictionHistory').find().sort({ timestamp: -1 }).limit(100).toArray()) || [];
+    res.json(history);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch prediction history' });
+  }
+});
+
+const { startAutoScheduler } = require('./services/autoScheduler');
+
 const PORT = process.env.PORT || 4000;
 init().then(() => {
   const srv = app.listen(PORT, () => {
     console.log('Server listening on', PORT);
     appendLog('listening', { port: PORT, address: srv.address(), pid: process.pid });
+    // Initialize Automated Background Scheduler Daemon
+    startAutoScheduler();
   });
 });
 
@@ -1248,3 +1272,8 @@ app.get('/api/uploads/:filename', (req, res) => {
   }
   return res.status(404).send('Not found');
 });
+
+module.exports = {
+  sendSseToUser: sendSse,
+  broadcastSse,
+};

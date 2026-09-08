@@ -6,7 +6,6 @@ import { formatRelativeTime } from '../lib/utils';
 import {
   Bell,
   CheckCircle2,
-  UserCheck,
   ShieldAlert,
   Clock,
   Layers,
@@ -17,7 +16,7 @@ import {
 } from 'lucide-react';
 
 export default function NotificationsPage() {
-  const { token, user } = useApp();
+  const { token } = useApp();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
@@ -40,6 +39,9 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     if (token) fetchNotifications();
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
   }, [token]);
 
   useEffect(() => {
@@ -56,6 +58,13 @@ export default function NotificationsPage() {
       try {
         const d = JSON.parse((ev as any).data);
         setItems(prev => [d, ...prev.filter(item => item.id !== d.id)]);
+
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification(d.title || 'SLOPEGUARD AI Alert', {
+            body: d.message || 'Automated landslide early warning update',
+            icon: '/logo.png',
+          });
+        }
       } catch (e) {}
     };
 
@@ -96,47 +105,43 @@ export default function NotificationsPage() {
 
   const getNotificationConfig = (type: string) => {
     switch (type) {
-      case 'report_submitted':
+      case 'risk_escalation':
+      case 'critical_alert':
         return {
-          icon: <ShieldAlert className="w-5 h-5 text-amber-400" />,
+          icon: <ShieldAlert className="w-5 h-5 text-red-400" />,
+          badgeClass: 'bg-red-500/20 text-red-300 border-red-500/30',
+          badgeText: 'CRITICAL RISK ESCALATED',
+        };
+      case 'rainfall_warning':
+        return {
+          icon: <Clock className="w-5 h-5 text-amber-400" />,
           badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-          badgeText: 'NEW REPORT SUBMITTED',
+          badgeText: 'HEAVY RAINFALL WARNING',
         };
-      case 'assignment_created_for_report':
+      case 'road_blocked':
         return {
-          icon: <UserCheck className="w-5 h-5 text-emerald-400" />,
-          badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-          badgeText: 'REPORT ASSIGNED TO ADMIN',
+          icon: <Layers className="w-5 h-5 text-orange-400" />,
+          badgeClass: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
+          badgeText: 'ROAD CLOSURE NOTICE',
         };
-      case 'assignment_claimed_for_report':
-        return {
-          icon: <UserCheck className="w-5 h-5 text-blue-400" />,
-          badgeClass: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-          badgeText: 'OFFICER CLAIMED REPORT',
-        };
-      case 'assignment_completed_for_report':
+      case 'safe_route_update':
         return {
           icon: <CheckCircle2 className="w-5 h-5 text-emerald-400" />,
           badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-          badgeText: 'REPORT RESOLVED',
+          badgeText: 'SAFE ROUTE UPDATED',
         };
+      case 'report_submitted':
       case 'assignment':
         return {
-          icon: <Layers className="w-5 h-5 text-indigo-400" />,
-          badgeClass: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
-          badgeText: 'TASK ASSIGNED TO YOU',
-        };
-      case 'report_review':
-        return {
-          icon: <Sparkles className="w-5 h-5 text-purple-400" />,
-          badgeClass: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-          badgeText: 'REPORT REVIEWED',
+          icon: <Sparkles className="w-5 h-5 text-blue-400" />,
+          badgeClass: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+          badgeText: 'SYSTEM DISPATCH NOTICE',
         };
       default:
         return {
           icon: <Bell className="w-5 h-5 text-accent-bright" />,
           badgeClass: 'bg-accent/20 text-accent-bright border-accent/30',
-          badgeText: 'SYSTEM NOTICE',
+          badgeText: 'AUTOMATED AI NOTICE',
         };
     }
   };
@@ -148,12 +153,10 @@ export default function NotificationsPage() {
         <div>
           <h1 className="text-2xl font-extrabold text-foreground flex items-center gap-2">
             <Bell className="h-6 w-6 text-accent-bright" />
-            Live System Notifications & Dispatch Inbox
+            Automated Early Warning Dispatch Inbox
           </h1>
           <p className="text-xs text-muted-foreground mt-1">
-            {user?.role !== 'citizen'
-              ? 'Real-time alert notifications for citizen report submissions, task dispatches, and emergency updates.'
-              : 'Real-time notifications for your submitted hazard reports and operational admin assignments.'}
+            Real-time automated alerts for ML risk predictions, weather threshold spikes, road closures, and safe evacuation advisories.
           </p>
         </div>
 

@@ -11,11 +11,8 @@ import { AlertsPage } from './pages/AlertsPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { RoadsPage } from './pages/RoadsPage';
 import SafeRoutePage from './pages/SafeRoutePage';
-import AssignmentsPage from './pages/AssignmentsPage';
 import NotificationsPage from './pages/NotificationsPage';
 import { CitizenHomePage } from './pages/CitizenHomePage';
-import { ReportHazardPage } from './pages/ReportHazardPage';
-import { ReportHistoryPage } from './pages/ReportHistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LandingPage } from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
@@ -47,11 +44,8 @@ export default function App() {
                 <Route path="analytics" element={<RequireRole roles={[ 'authority', 'super_admin' ]}><AnalyticsPage /></RequireRole>} />
                 <Route path="roads" element={<RequireRole roles={[ 'authority', 'super_admin' ]}><RoadsPage /></RequireRole>} />
                 <Route path="safe-route" element={<SafeRoutePage />} />
-                <Route path="assignments" element={<RequireRole roles={[ 'authority','field_official' ]}><AssignmentsPage /></RequireRole>} />
                 <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="citizen" element={<CitizenHomePage />} />
-                <Route path="report" element={<ReportHazardPage />} />
-                <Route path="history" element={<ReportHistoryPage />} />
                 <Route path="settings" element={<SettingsPage />} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
