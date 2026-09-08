@@ -12,7 +12,7 @@ const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://127.0.0.1:5000';
  */
 async function checkMLHealth() {
   try {
-    const res = await axios.get(`${ML_SERVICE_URL}/health`, { timeout: 3000 });
+    const res = await axios.get(`${ML_SERVICE_URL}/health`, { timeout: 3000, proxy: false });
     return res.data;
   } catch (err) {
     return { status: 'offline', model_loaded: false, error: err.message };
@@ -49,7 +49,8 @@ async function predictRisk(features) {
 
     const res = await axios.post(`${ML_SERVICE_URL}/predict`, payload, {
       headers: { 'Content-Type': 'application/json' },
-      timeout: 5000
+      timeout: 5000,
+      proxy: false
     });
 
     return {
@@ -90,7 +91,8 @@ async function predictBatch(locations) {
 
     const res = await axios.post(`${ML_SERVICE_URL}/predict/batch`, payload, {
       headers: { 'Content-Type': 'application/json' },
-      timeout: 8000
+      timeout: 8000,
+      proxy: false
     });
 
     return res.data;
