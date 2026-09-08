@@ -227,19 +227,26 @@ async function fetchEnvironmentalData(location) {
  * Fetch environmental data for multiple locations (batch)
  */
 async function fetchEnvironmentalDataBatch(locations, delayMs = 100) {
-  const results = [];
+  const envMap = new Map();
 
   for (const location of locations) {
     const data = await fetchEnvironmentalData(location);
     if (data) {
-      results.push({ ...location, environmentalData: data });
+      const locId = location.id || location._id || location.name;
+      if (locId) {
+        envMap.set(locId, data);
+        envMap.set(String(locId), data);
+      }
+      if (location.name) {
+        envMap.set(location.name, data);
+      }
     }
     if (delayMs > 0) {
       await new Promise(resolve => setTimeout(resolve, delayMs));
     }
   }
 
-  return results;
+  return envMap;
 }
 
 module.exports = {

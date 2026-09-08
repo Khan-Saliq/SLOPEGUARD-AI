@@ -56,7 +56,17 @@ async function runAutomatedPipeline() {
     }));
 
     const environmentalMap = await fetchEnvironmentalDataBatch(locationsToFetch);
-    const getEnv = (key) => (environmentalMap && typeof environmentalMap.get === 'function') ? (environmentalMap.get(key) || {}) : (environmentalMap && environmentalMap[key] ? environmentalMap[key] : {});
+    const getEnv = (key) => {
+      if (!environmentalMap) return {};
+      if (typeof environmentalMap.get === 'function') {
+        return environmentalMap.get(key) || environmentalMap.get(String(key)) || {};
+      }
+      if (Array.isArray(environmentalMap)) {
+        const found = environmentalMap.find(item => item.id === key || item.name === key || String(item.id) === String(key));
+        return found ? (found.environmentalData || found) : {};
+      }
+      return environmentalMap[key] || {};
+    };
 
     // 3. Prepare ML input feature vectors
     const mlBatchInput = zones.map(z => {
