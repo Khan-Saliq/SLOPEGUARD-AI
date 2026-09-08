@@ -224,8 +224,8 @@ export function CitizenHomePage() {
                 <Layers className="h-4 w-4 text-accent-bright" />
                 Monitored Slope Hazard Zones
               </span>
-              <Link to="/map" className="text-[11px] text-accent-bright hover:underline font-normal">
-                View All on GIS Map ➔
+              <Link to="/safe-route" className="text-[11px] text-accent-bright hover:underline font-normal">
+                Check Evacuation Routes ➔
               </Link>
             </CardTitle>
           </CardHeader>

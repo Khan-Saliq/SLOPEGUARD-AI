@@ -12,9 +12,7 @@ import {
   Share2,
   Home,
   Hospital as HospitalIcon,
-  CheckCircle2,
   AlertOctagon,
-  Send,
   RefreshCw,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
@@ -67,7 +65,6 @@ export function SafeRouteCalculator({ isAdmin = false, onSelectRoute }: SafeRout
     refreshHospitals,
     refreshEvacuationRoutes,
     updateRoadStatus,
-    publishEvacuationRoute,
   } = useMonitorData();
   const { user } = useApp();
 
@@ -89,10 +86,6 @@ export function SafeRouteCalculator({ isAdmin = false, onSelectRoute }: SafeRout
   const [activeRouteResult, setActiveRouteResult] = useState<RouteResult & { hazardAnalysis?: any } | null>(null);
   const [alternatives, setAlternatives] = useState<AlternativeRouteOption[]>([]);
   const [selectedAltIndex, setSelectedAltIndex] = useState<number>(0);
-
-  // Admin mutation states
-  const [publishing, setPublishing] = useState(false);
-  const [publishSuccess, setPublishSuccess] = useState<string | null>(null);
 
   // Convert blocked/vulnerable roads to hazard zones
   const hazardZones: HazardZone[] = useMemo(() => {
@@ -117,7 +110,6 @@ export function SafeRouteCalculator({ isAdmin = false, onSelectRoute }: SafeRout
     async (start: RoutePoint, end: RoutePoint) => {
       setIsCalculating(true);
       setError(null);
-      setPublishSuccess(null);
 
       try {
         const primaryRoute = await calculateSafeRoute(start, end, hazardZones, { preferORS: true });
@@ -266,33 +258,6 @@ export function SafeRouteCalculator({ isAdmin = false, onSelectRoute }: SafeRout
   const activeDistance = alternatives[selectedAltIndex]?.distanceKm ?? activeRouteResult?.distance ?? 0;
   const activeDuration = alternatives[selectedAltIndex]?.durationHours ?? activeRouteResult?.duration ?? 0;
   const activeStatus = alternatives[selectedAltIndex]?.routeStatus ?? 'NORMAL';
-
-  // Admin: Publish Route as Official Evacuation Route
-  const handlePublishRoute = async () => {
-    if (!originPoint || !destPoint || currentGeometry.length === 0) return;
-    setPublishing(true);
-    setPublishSuccess(null);
-
-    try {
-      await publishEvacuationRoute({
-        title: `Evacuation Route: ${originInput} ➔ ${destinationInput}`,
-        originName: originInput,
-        destinationName: destinationInput,
-        district: originPoint.name?.split(',')[1]?.trim() || 'Evacuation Corridor',
-        coordinates: currentGeometry,
-        distanceKm: activeDistance,
-        estHours: activeDuration,
-        status: 'published',
-        safetyRating: activeStatus === 'NORMAL' ? 'RECOMMENDED' : activeStatus === 'CAUTION' ? 'CAUTION' : 'WARNING',
-        warnings: activeRouteResult?.warnings || [],
-      });
-      setPublishSuccess('✓ Evacuation Route successfully published to Citizen Emergency Network!');
-    } catch (err: any) {
-      setError('Failed to publish evacuation route: ' + err.message);
-    } finally {
-      setPublishing(false);
-    }
-  };
 
   const handleCopySummary = () => {
     const text = `🚨 EMERGENCY EVACUATION ROUTE ADVISORY\nFrom: ${originInput}\nTo: ${destinationInput}\nDistance: ${activeDistance.toFixed(1)} km\nEstimated Travel Time: ${(activeDuration * 60).toFixed(0)} mins\nRoute Safety Status: ${activeStatus}\n\nKey Hazards & Advisories:\n${(activeRouteResult?.warnings || []).join('\n')}\n\nStay alert and monitor Landslide Emergency Command.`;
@@ -502,27 +467,7 @@ export function SafeRouteCalculator({ isAdmin = false, onSelectRoute }: SafeRout
                 <span className="text-[10px] text-red-300 font-mono">AUTHORIZED ONLY</span>
               </div>
 
-              {publishSuccess && (
-                <div className="p-2.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 rounded text-xs font-semibold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  {publishSuccess}
-                </div>
-              )}
 
-              <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
-                <Button
-                  onClick={handlePublishRoute}
-                  disabled={publishing || currentGeometry.length === 0}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2"
-                >
-                  {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  Publish as Official Evacuation Route
-                </Button>
-
-                <div className="text-[11px] text-muted-foreground font-medium">
-                  {evacuationRoutes.length} Published Routes Active
-                </div>
-              </div>
 
               {/* Controlled Road & Route Safety Simulation Controls */}
               <div className="pt-2 border-t border-red-500/20 space-y-2.5">

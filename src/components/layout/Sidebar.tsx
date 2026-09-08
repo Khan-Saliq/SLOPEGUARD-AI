@@ -22,8 +22,6 @@ const authorityLinks = [
 
 const citizenLinks = [
   { to: '/citizen', icon: Mountain, key: 'citizenHome' },
-  { to: '/dashboard', icon: LayoutDashboard, key: 'dashboard' },
-  { to: '/map', icon: Map, key: 'map' },
   { to: '/safe-route', icon: Route, key: 'safeRoute' },
   { to: '/alerts', icon: Bell, key: 'alerts' },
   { to: '/notifications', icon: Bell, key: 'notifications' },
