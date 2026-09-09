@@ -63,3 +63,12 @@ export function getApiUrl(path: string): string {
   }
   return path;
 }
+
+export function getImageUrl(url?: string | null): string {
+  if (!url) return '/logo.png';
+  if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  return getApiUrl(url);
+}
+

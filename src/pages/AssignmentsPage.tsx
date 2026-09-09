@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../hooks/useApp';
-import { getApiUrl, formatRelativeTime } from '../lib/utils';
+import { getApiUrl, getImageUrl, formatRelativeTime } from '../lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import {
@@ -294,7 +294,7 @@ export default function AssignmentsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <AnimatePresence>
               {filteredReports.map((report, idx) => {
-                const photo = report.evidenceUrl || report.mediaUrl || report.imageUrl || report.photoUrl;
+                const photo = getImageUrl(report.photoBase64 || report.evidenceUrl || report.mediaUrl || report.imageUrl || report.photoUrl);
                 const aiDecision = report.aiVerification?.decision || (report.status === 'verified' ? 'accepted' : report.status === 'rejected' ? 'rejected' : 'unclear_manual_inspection');
                 const assignedDept = report.assignedDepartment || 'Unassigned Taskforce';
 

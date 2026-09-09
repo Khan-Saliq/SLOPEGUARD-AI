@@ -572,22 +572,25 @@ app.get('/api/reports/:id', optionalAuthMiddleware, async (req, res) => {
 
 app.post('/api/reports', optionalAuthMiddleware, async (req, res) => {
   try {
-    const { category, description, location, photoBase64, captureMethod, metadata } = req.body || {};
+    const { category, description, location, photoBase64, captureMethod, metadata, severity } = req.body || {};
     if (!description) return res.status(400).json({ error: 'Description is required' });
 
     const reportId = `REP-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${nanoid(4).toUpperCase()}`;
     const categoryName = category || 'landslide';
     const loc = location || {};
 
+    const rawPhotoBase64 = photoBase64 || req.body.evidenceUrl || req.body.photoUrl || req.body.imageUrl || req.body.mediaUrl || null;
     // Save base64 image permanently to server/uploads
-    const savedPhoto = saveBase64ToUploads(photoBase64 || req.body.evidenceUrl || req.body.photoUrl) || photoBase64 || '/logo.png';
+    const savedPhoto = saveBase64ToUploads(rawPhotoBase64) || rawPhotoBase64 || '/logo.png';
 
     // Execute Hugging Face AI Image Inspection
-    let hfResult = null;
-    try {
-      hfResult = await analyzeImageWithHuggingFace(photoBase64 || savedPhoto, categoryName);
-    } catch (e) {
-      hfResult = analyzeImageVerification(photoBase64, categoryName, { captureMethod, ...metadata });
+    let hfResult = req.body.aiAnalysis || null;
+    if (!hfResult && rawPhotoBase64) {
+      try {
+        hfResult = await analyzeImageWithHuggingFace(rawPhotoBase64 || savedPhoto, categoryName);
+      } catch (e) {
+        hfResult = analyzeImageVerification(rawPhotoBase64, categoryName, { captureMethod, ...metadata });
+      }
     }
 
     const initialStatus = hfResult?.decision === 'accepted' ? 'verified' : hfResult?.decision === 'rejected' ? 'rejected' : 'pending';
@@ -604,22 +607,61 @@ app.post('/api/reports', optionalAuthMiddleware, async (req, res) => {
         district: loc.district || 'East Khasi Hills',
         state: loc.state || 'Meghalaya'
       },
+      photoBase64: rawPhotoBase64,
       photoUrl: savedPhoto,
       evidenceUrl: savedPhoto,
       imageUrl: savedPhoto,
       mediaUrl: savedPhoto,
+      severity: severity || 'moderate',
       status: initialStatus,
       userId: req.user?.id || 'anonymous-citizen',
       userName: req.user?.name || 'Citizen User',
       userEmail: req.user?.email || 'citizen@giriraksha.in',
       createdAt: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       aiVerification: hfResult,
       ai_result: hfResult,
-      assignedDepartment: 'Disaster Response Taskforce'
+      assignedDepartment: 'Disaster Response Taskforce',
+      // Required AI Inspection Database Fields
+      ai_analysis_status: hfResult?.analysisStatus || 'COMPLETED',
+      ai_model_name: hfResult?.modelName || process.env.HUGGINGFACE_IMAGE_MODEL || 'google/vit-base-patch16-224',
+      ai_model_version: 'v1.0.0',
+      detected_labels: hfResult?.detectedLabels || [],
+      label_confidence: hfResult?.detectedLabels?.[0]?.confidence || hfResult?.hazardConfidence || 0,
+      predicted_hazard_type: hfResult?.possibleHazardType || categoryName,
+      hazard_confidence: hfResult?.hazardConfidence || 0,
+      image_relevance: hfResult?.imageRelevance || (hfResult?.decision === 'accepted' ? 'RELEVANT' : hfResult?.decision === 'rejected' ? 'IRRELEVANT' : 'UNCERTAIN'),
+      requires_human_review: hfResult?.decision !== 'accepted',
+      requiresHumanVerification: hfResult?.decision !== 'accepted',
+      ai_processed_at: hfResult?.processedAt || new Date().toISOString(),
+      summaryMessage: hfResult?.summaryMessage || 'Report submitted and queued for review.'
     };
 
     await insertReportDoc(reportObj);
+
+    // Real-time Road Blockage Auto-Registration for hazard reports
+    if (['road_blockage', 'landslide', 'crack', 'debris'].includes(categoryName) && loc.lat && loc.lng) {
+      try {
+        const roadBlock = {
+          id: `road-live-${Date.now()}`,
+          name: `Blocked Section near ${loc.area || loc.district || 'Hazard Location'}`,
+          district: loc.district || 'East Khasi Hills',
+          status: categoryName === 'crack' ? 'damaged' : 'blocked',
+          riskLevel: severity || 'critical',
+          lastReport: `LIVE REPORT (${categoryName.toUpperCase().replace('_', ' ')}): ${description.slice(0, 70)}`,
+          coordinates: [
+            [loc.lat, loc.lng],
+            [loc.lat + 0.004, loc.lng + 0.004]
+          ],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        await getDb().collection('roads').insertOne(roadBlock);
+      } catch (e) {
+        console.warn('Road blockage auto-registration notice:', e.message);
+      }
+    }
 
     // Notify all Authority / Admin users about the new citizen report
     try {
@@ -951,135 +993,7 @@ app.post('/api/notifications/:id/read', authMiddleware, async (req, res) => {
   res.json(r.value);
 });
 
-app.post('/api/reports', authMiddleware, async (req, res) => {
-  const {
-    category,
-    description,
-    location,
-    severity,
-    evidenceUrl,
-    captureTimestamp,
-    captureMetadata,
-    aiAnalysis,
-    detectedCategory
-  } = req.body;
 
-  if (!category || !description) return res.status(400).json({ error: 'Missing fields' });
-
-  const rawPhoto = req.body.photoBase64 || evidenceUrl || req.body.photoUrl || req.body.imageUrl || req.body.mediaUrl;
-  const savedPhoto = saveBase64ToUploads(rawPhoto) || rawPhoto || null;
-
-  // If evidence URL provided, trigger Hugging Face image analysis backend service if not already provided
-  let hfResult = aiAnalysis;
-  if (!hfResult && (savedPhoto || evidenceUrl)) {
-    try {
-      hfResult = await analyzeImageWithHuggingFace(savedPhoto || evidenceUrl, category);
-    } catch (e) {
-      console.warn('[Backend Report API] Hugging Face inspection fallback:', e.message);
-    }
-  }
-
-  const initialStatus = hfResult?.decision === 'accepted' ? 'verified' : hfResult?.decision === 'rejected' ? 'rejected' : 'pending';
-
-  const report = {
-    id: nanoid(),
-    userId: req.user.id,
-    userName: req.user.name,
-    category: detectedCategory || category,
-    description,
-    location,
-    severity: severity || 'moderate',
-    evidenceUrl: savedPhoto || evidenceUrl || null,
-    mediaUrl: savedPhoto || req.body.mediaUrl || null,
-    imageUrl: savedPhoto || req.body.imageUrl || null,
-    photoUrl: savedPhoto || req.body.photoUrl || null,
-    evidenceAssessment: req.body.evidenceAssessment || 'likely_genuine',
-    mediaAuthenticity: req.body.mediaAuthenticity || 'camera_verified',
-    captureTimestamp: captureTimestamp || null,
-    captureMetadata: captureMetadata || null,
-    timestamp: new Date().toISOString(),
-    status: initialStatus,
-    aiVerification: hfResult,
-    ai_result: hfResult,
-    assignedDepartment: 'Disaster Response Taskforce',
-    // Required AI Inspection Database Fields
-    ai_analysis_status: hfResult?.analysisStatus || 'PENDING',
-    ai_model_name: hfResult?.modelName || process.env.HUGGINGFACE_IMAGE_MODEL || 'google/vit-base-patch16-224',
-    ai_model_version: 'v1.0.0',
-    detected_labels: hfResult?.detectedLabels || [],
-    label_confidence: hfResult?.detectedLabels?.[0]?.confidence || hfResult?.hazardConfidence || 0,
-    predicted_hazard_type: hfResult?.possibleHazardType || 'UNKNOWN',
-    hazard_confidence: hfResult?.hazardConfidence || 0,
-    image_relevance: hfResult?.imageRelevance || 'UNKNOWN',
-    requires_human_review: true,
-    requiresHumanVerification: true,
-    ai_processed_at: hfResult?.processedAt || new Date().toISOString(),
-    ai_error_message: hfResult?.errorMessage || null,
-    summaryMessage: hfResult?.summaryMessage || 'AI screening is temporarily unavailable. Your report has been submitted for manual verification.'
-  };
-
-  const created = await insertReportDoc(report);
-
-  // Real-time Road Blockage Auto-Registration for hazard reports
-  if (['road_blockage', 'landslide', 'crack', 'debris'].includes(category) && location && location.lat && location.lng) {
-    try {
-      const roadBlock = {
-        id: `road-live-${Date.now()}`,
-        name: `Blocked Section near ${location.area || location.district || 'Hazard Location'}`,
-        district: location.district || 'General',
-        status: category === 'crack' ? 'damaged' : 'blocked',
-        riskLevel: severity || 'critical',
-        lastReport: `LIVE REPORT (${category.toUpperCase().replace('_', ' ')}): ${description.slice(0, 70)}`,
-        coordinates: [
-          [location.lat, location.lng],
-          [location.lat + 0.004, location.lng + 0.004]
-        ],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      await getDb().collection('roads').insertOne(roadBlock);
-      console.log('⚡ Real-Time Road Blockage Registered:', roadBlock.name);
-    } catch (e) {
-      console.warn('Road blockage auto-registration notice:', e.message);
-    }
-  }
-  // Notify all Admins / Super Admins / Authority staff that a citizen has submitted a new report
-  try {
-    const adminUsers = await getDb().collection('users').find({
-      role: { $in: ['admin', 'super_admin', 'authority'] }
-    }).toArray();
-
-    const reportCategoryStr = (detectedCategory || category || 'hazard').toUpperCase().replace('_', ' ');
-    const submitterName = req.user.name || 'Citizen';
-
-    for (const adminUser of adminUsers) {
-      const adminId = adminUser.id || adminUser._id;
-      const adminNote = {
-        id: nanoid(),
-        userId: adminId,
-        type: 'report_submitted',
-        title: 'New Citizen Hazard Report Submitted',
-        message: `User "${submitterName}" submitted a new hazard report (#${created.id}): "${description.slice(0, 70)}" [${reportCategoryStr}]`,
-        read: false,
-        createdAt: new Date().toISOString(),
-        reportId: created.id,
-        reportCreatorId: req.user.id,
-        meta: {
-          reportId: created.id,
-          submittedBy: submitterName,
-          category: detectedCategory || category,
-          severity: created.severity
-        }
-      };
-      await getDb().collection('notifications').insertOne(adminNote);
-      sendSse(adminId, 'notification', adminNote);
-    }
-  } catch (e) {
-    appendLog('notify-admins-report-submitted-failed', { err: e && e.message });
-  }
-
-  res.json(created);
-});
 
 // AI Media Inspection Endpoint using Backend Hugging Face Vision Service
 app.post('/api/inspect-media', optionalAuthMiddleware, async (req, res) => {
@@ -1647,10 +1561,38 @@ app.post('/api/upload', authMiddleware, upload.single('file'), async (req, res) 
   res.json({ url, filename });
 });
 
-app.get('/api/uploads/:filename', (req, res) => {
+app.get('/api/uploads/:filename', async (req, res) => {
   const filePath = path.join(uploadsDir, req.params.filename);
   if (fs.existsSync(filePath)) {
     return res.sendFile(filePath);
+  }
+  try {
+    const filename = req.params.filename;
+    const report = await getDb().collection('reports').findOne({
+      $or: [
+        { photoUrl: { $regex: filename } },
+        { evidenceUrl: { $regex: filename } },
+        { imageUrl: { $regex: filename } },
+        { mediaUrl: { $regex: filename } }
+      ]
+    });
+    if (report) {
+      const b64 = report.photoBase64 || (report.photoUrl && report.photoUrl.startsWith('data:image/') ? report.photoUrl : null);
+      if (b64) {
+        let type = 'jpeg';
+        let cleanB64 = b64;
+        const matches = b64.match(/^data:image\/(\w+);base64,(.*)$/);
+        if (matches) {
+          type = matches[1];
+          cleanB64 = matches[2];
+        }
+        const buffer = Buffer.from(cleanB64, 'base64');
+        res.contentType(`image/${type}`);
+        return res.send(buffer);
+      }
+    }
+  } catch (e) {
+    console.warn('Fallback serve image error:', e.message);
   }
   return res.status(404).send('Not found');
 });

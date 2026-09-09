@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { getApiUrl, formatRelativeTime } from '../lib/utils';
+import { getApiUrl, getImageUrl, formatRelativeTime } from '../lib/utils';
 
 interface Report {
   id: string;
@@ -25,6 +25,7 @@ interface Report {
   evidenceUrl?: string;
   imageUrl?: string;
   mediaUrl?: string;
+  photoBase64?: string;
   status: 'pending' | 'submitted' | 'verified' | 'rejected';
   createdAt: string;
   timestamp?: string;
@@ -146,7 +147,7 @@ export function ReportHistoryPage() {
         <div className="space-y-4">
           <AnimatePresence>
             {reports.map((report, idx) => {
-              const photo = report.photoUrl || report.evidenceUrl || report.imageUrl || report.mediaUrl;
+              const photo = getImageUrl(report.photoBase64 || report.photoUrl || report.evidenceUrl || report.imageUrl || report.mediaUrl);
               const aiDecision = report.aiVerification?.decision || (report.status === 'verified' ? 'accepted' : report.status === 'rejected' ? 'rejected' : 'unclear_manual_inspection');
               const assignedDept = report.assignedDepartment || 'Disaster Response Taskforce';
 

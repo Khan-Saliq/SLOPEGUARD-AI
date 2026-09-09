@@ -7,7 +7,7 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
-import { formatRelativeTime } from '../../lib/utils';
+import { formatRelativeTime, getImageUrl } from '../../lib/utils';
 
 interface Report {
   id: string;
@@ -200,21 +200,29 @@ export function CitizenReportsPanel() {
                 </div>
 
                 {/* Content Body: Image + Details + AI Verification */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
-                  {/* Photo Thumbnail */}
-                  {report.photoUrl && (
-                    <div className="md:col-span-4 relative group h-40 rounded-xl overflow-hidden border border-border bg-black/40">
-                      <img src={report.photoUrl} alt="Hazard photo" className="w-full h-full object-cover" />
-                      <button
-                        onClick={() => setSelectedPhoto(report.photoUrl!)}
-                        className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold gap-1.5"
-                      >
-                        <Eye className="h-4 w-4" /> View Full Image
-                      </button>
-                    </div>
-                  )}
+                {(() => {
+                  const rawPhoto = (report as any).photoBase64 || report.photoUrl || (report as any).evidenceUrl || (report as any).imageUrl;
+                  const photoSrc = rawPhoto ? getImageUrl(rawPhoto) : null;
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                      {/* Photo Thumbnail */}
+                      {photoSrc && (
+                        <div className="md:col-span-4 relative group h-40 rounded-xl overflow-hidden border border-border bg-black/40">
+                          <img
+                            src={photoSrc}
+                            alt="Hazard photo"
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            onClick={() => setSelectedPhoto(photoSrc)}
+                            className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold gap-1.5"
+                          >
+                            <Eye className="h-4 w-4" /> View Full Image
+                          </button>
+                        </div>
+                      )}
 
-                  <div className={report.photoUrl ? 'md:col-span-8 space-y-3' : 'md:col-span-12 space-y-3'}>
+                      <div className={photoSrc ? 'md:col-span-8 space-y-3' : 'md:col-span-12 space-y-3'}>
                     <div className="flex items-center gap-1.5 text-xs text-dim">
                       <MapPin className="h-3.5 w-3.5 text-accent-bright shrink-0" />
                       <span><strong>Location:</strong> {report.location?.area || 'Sector'}, {report.location?.district || ''} ({report.location?.lat}, {report.location?.lng})</span>
@@ -276,8 +284,10 @@ export function CitizenReportsPanel() {
 
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })()}
+          </div>
+        ))}
           </div>
         )}
       </CardContent>

@@ -186,6 +186,8 @@ export interface CitizenReport {
   mediaUrl?: string;
   evidenceUrl?: string;
   imageUrl?: string;
+  photoUrl?: string;
+  photoBase64?: string;
   timestamp: string;
   status: ReportStatus;
   evidenceAssessment: EvidenceAssessment;
