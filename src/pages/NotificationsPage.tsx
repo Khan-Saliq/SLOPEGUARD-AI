@@ -108,6 +108,28 @@ export default function NotificationsPage() {
           badgeClass: 'bg-red-500/20 text-red-300 border-red-500/30',
           badgeText: 'CRITICAL RISK ESCALATED',
         };
+      case 'new_citizen_report':
+      case 'report_submitted':
+        return {
+          icon: <ShieldAlert className="w-5 h-5 text-cyan-400" />,
+          badgeClass: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+          badgeText: 'NEW CITIZEN HAZARD REPORT',
+        };
+      case 'report_action_taken':
+      case 'report_status_updated':
+        return {
+          icon: <CheckCircle2 className="w-5 h-5 text-emerald-400" />,
+          badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+          badgeText: 'ADMIN ACTION TAKEN',
+        };
+      case 'report_assignment_update':
+      case 'assignment_created_for_report':
+      case 'assignment':
+        return {
+          icon: <Sparkles className="w-5 h-5 text-purple-400" />,
+          badgeClass: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+          badgeText: 'ASSIGNED TO ADMIN / DEPT',
+        };
       case 'rainfall_warning':
         return {
           icon: <Clock className="w-5 h-5 text-amber-400" />,
@@ -125,13 +147,6 @@ export default function NotificationsPage() {
           icon: <CheckCircle2 className="w-5 h-5 text-emerald-400" />,
           badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
           badgeText: 'SAFE ROUTE UPDATED',
-        };
-      case 'report_submitted':
-      case 'assignment':
-        return {
-          icon: <Sparkles className="w-5 h-5 text-blue-400" />,
-          badgeClass: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-          badgeText: 'SYSTEM DISPATCH NOTICE',
         };
       default:
         return {

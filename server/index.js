@@ -621,6 +621,45 @@ app.post('/api/reports', optionalAuthMiddleware, async (req, res) => {
 
     await insertReportDoc(reportObj);
 
+    // Notify all Authority / Admin users about the new citizen report
+    try {
+      const adminUsers = await getDb().collection('users').find({
+        role: { $in: ['authority', 'super_admin', 'admin'] }
+      }).toArray();
+
+      const categoryDisplay = categoryName.replace('_', ' ').toUpperCase();
+      const locArea = loc.area || 'Regional Sector';
+      const locDist = loc.district || 'East Khasi Hills';
+      const citizenName = reportObj.userName || 'Citizen User';
+
+      for (const adminUser of adminUsers) {
+        const adminId = adminUser.id || adminUser._id;
+        const adminNotif = {
+          id: nanoid(),
+          userId: adminId,
+          recipientRole: 'authority',
+          type: 'new_citizen_report',
+          title: `🚨 New Citizen Hazard Report: ${categoryDisplay}`,
+          message: `Citizen ${citizenName} submitted a new ${categoryDisplay} hazard report at ${locArea} (${locDist}). Review & dispatch action required.`,
+          read: false,
+          createdAt: new Date().toISOString(),
+          reportId: reportId,
+          meta: {
+            reportId: reportId,
+            category: categoryName,
+            area: locArea,
+            district: locDist,
+            submittedBy: citizenName,
+            userEmail: reportObj.userEmail
+          }
+        };
+        await getDb().collection('notifications').insertOne(adminNotif);
+        sendSse(adminId, 'notification', adminNotif);
+      }
+    } catch (notifErr) {
+      console.warn('Failed to notify admins of new report:', notifErr.message);
+    }
+
     // Emit real-time SSE broadcast event to inform authority admins immediately
     broadcastSse('report_submitted', reportObj);
 
@@ -660,20 +699,51 @@ app.patch('/api/reports/:id/status', authMiddleware, requireRole('authority', 's
     const updatedReport = result.value || await getDb().collection('reports').findOne({ id });
     if (!updatedReport) return res.status(404).json({ error: 'Report not found' });
 
-    // Notify original report creator via notification & SSE
+    // 1. Notify original report creator (citizen) via notification & SSE
     if (updatedReport.userId && updatedReport.userId !== 'anonymous-citizen') {
       const creatorNote = {
         id: nanoid(),
         userId: updatedReport.userId,
-        type: 'report_status_updated',
-        title: `Report #${id} ${status.toUpperCase()}`,
-        message: `Your submitted hazard report (${updatedReport.location?.area || 'Sector'}) has been marked as ${status.toUpperCase()} by Authority Admin. ${adminNotes ? 'Notes: ' + adminNotes : ''}`,
+        type: 'report_action_taken',
+        title: `📋 Hazard Report Update: ${status.toUpperCase()}`,
+        message: `Your submitted hazard report (${updatedReport.location?.area || 'Sector'}) has been updated to ${status.toUpperCase()} by Admin (${req.user.name || 'Authority'}).${assignedDepartment ? ` Assigned to: ${assignedDepartment}.` : ''} ${adminNotes ? 'Admin Note: ' + adminNotes : ''}`,
         read: false,
         createdAt: new Date().toISOString(),
-        meta: { reportId: id, status, adminNotes }
+        reportId: id,
+        reportCreatorId: updatedReport.userId,
+        meta: { reportId: id, status, assignedDepartment, adminNotes, updatedBy: req.user.name }
       };
       await getDb().collection('notifications').insertOne(creatorNote);
       sendSse(updatedReport.userId, 'notification', creatorNote);
+    }
+
+    // 2. Notify assigned department admin & authority staff
+    try {
+      const adminUsers = await getDb().collection('users').find({
+        role: { $in: ['authority', 'super_admin', 'field_official'] }
+      }).toArray();
+
+      for (const adminUser of adminUsers) {
+        const adminId = adminUser.id || adminUser._id;
+        if (adminId !== req.user.id) {
+          const adminAssignNote = {
+            id: nanoid(),
+            userId: adminId,
+            recipientRole: 'authority',
+            type: 'report_assignment_update',
+            title: `📌 Report #${id} Assigned: ${assignedDepartment}`,
+            message: `Hazard report #${id} at ${updatedReport.location?.area || 'Sector'} was updated to ${status.toUpperCase()} and assigned to ${assignedDepartment} by Admin ${req.user.name || ''}. ${adminNotes ? 'Note: ' + adminNotes : ''}`,
+            read: false,
+            createdAt: new Date().toISOString(),
+            reportId: id,
+            meta: { reportId: id, status, assignedDepartment, adminNotes, assignedBy: req.user.name }
+          };
+          await getDb().collection('notifications').insertOne(adminAssignNote);
+          sendSse(adminId, 'notification', adminAssignNote);
+        }
+      }
+    } catch (assignNotifErr) {
+      console.warn('Failed to notify assigned admins:', assignNotifErr.message);
     }
 
     // Broadcast SSE update to all connected clients
@@ -864,7 +934,11 @@ app.get('/api/users', authMiddleware, requireRole('authority'), async (req, res)
 // notifications
 app.get('/api/notifications', authMiddleware, async (req, res) => {
   const unreadOnly = req.query.unread === 'true';
-  const q = { userId: req.user.id };
+  const isAuthority = req.user.role === 'authority' || req.user.role === 'super_admin' || req.user.role === 'admin';
+  const q = isAuthority
+    ? { $or: [{ userId: req.user.id }, { recipientRole: 'authority' }] }
+    : { userId: req.user.id };
+
   if (unreadOnly) q.read = false;
   const items = await getDb().collection('notifications').find(q).sort({ createdAt: -1 }).toArray();
   res.json(items || []);
