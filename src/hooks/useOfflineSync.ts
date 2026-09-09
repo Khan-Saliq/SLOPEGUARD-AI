@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { CitizenReport, ProblemCategory, RiskLevel, Location } from '../types';
 
-const OFFLINE_QUEUE_KEY = 'slopeguard_offline_reports_queue';
+const OFFLINE_QUEUE_KEY = 'giriraksha_offline_reports_queue';
 
 export interface SubmitReportInput {
   userId: string;
