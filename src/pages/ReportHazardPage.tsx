@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Camera, MapPin, Upload, AlertTriangle, CheckCircle2, RefreshCw,
-  Sparkles, ArrowRight, ShieldAlert, FileText, Image as ImageIcon
+  Sparkles, ArrowRight, ShieldAlert, FileText, Image as ImageIcon,
+  Check, XCircle, AlertCircle, Loader2
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
+import { getApiUrl } from '../lib/utils';
 
 interface AIResult {
   is_relevant: boolean;
@@ -16,6 +18,8 @@ interface AIResult {
   apparent_severity: string;
   reasons: string[];
   recommendation: string;
+  decision?: string;
+  summaryMessage?: string;
 }
 
 interface SubmittedReport {
@@ -50,6 +54,14 @@ export function ReportHazardPage() {
   const [fetchingGps, setFetchingGps] = useState<boolean>(false);
   const [gpsStatus, setGpsStatus] = useState<string | null>(null);
 
+  // Live Hugging Face Screening State
+  const [hfScreening, setHfScreening] = useState<{
+    status: 'idle' | 'analyzing' | 'completed';
+    decision?: 'accepted' | 'rejected' | 'unclear_manual_inspection';
+    summary?: string;
+    labels?: { label: string; confidence: number }[];
+  }>({ status: 'idle' });
+
   // Submission State
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,31 +79,75 @@ export function ReportHazardPage() {
     }
 
     setFetchingGps(true);
-    setGpsStatus('Detecting GPS location...');
+    setGpsStatus('Detecting exact GPS location...');
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLat(parseFloat(pos.coords.latitude.toFixed(4)));
-        setLng(parseFloat(pos.coords.longitude.toFixed(4)));
-        setGpsStatus('GPS coordinates updated successfully');
+      async (pos) => {
+        const latVal = parseFloat(pos.coords.latitude.toFixed(5));
+        const lngVal = parseFloat(pos.coords.longitude.toFixed(5));
+        setLat(latVal);
+        setLng(lngVal);
+        setGpsStatus(`GPS Acquired: ${latVal}, ${lngVal} (±${Math.round(pos.coords.accuracy)}m)`);
         setFetchingGps(false);
+
+        try {
+          const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latVal}&lon=${lngVal}&format=json`);
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            const addr = geoData.address || {};
+            const area = addr.suburb || addr.neighbourhood || addr.village || addr.town || addr.city || areaName;
+            const dist = addr.state_district || addr.county || addr.city_district || district;
+            if (area) setAreaName(area);
+            if (dist) setDistrict(dist);
+            if (addr.state) setState(addr.state);
+          }
+        } catch (e) {}
       },
       (err) => {
         console.warn('Geolocation error:', err.message);
         setGpsStatus('Using regional default GPS (Coordinates selectable)');
         setFetchingGps(false);
       },
-      { timeout: 8000, enableHighAccuracy: true }
+      { timeout: 10000, enableHighAccuracy: true }
     );
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setPhoto(file);
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+        setPhotoPreview(base64);
+
+        // Trigger Live Hugging Face AI Vision Inspection
+        setHfScreening({ status: 'analyzing' });
+        try {
+          const token = localStorage.getItem('token');
+          const res = await fetch(getApiUrl('/api/inspect-media'), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ imageUrl: base64, category })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const ai = data.ai_result || data;
+            setHfScreening({
+              status: 'completed',
+              decision: ai.decision || (ai.imageRelevance === 'RELEVANT' ? 'accepted' : ai.imageRelevance === 'IRRELEVANT' ? 'rejected' : 'unclear_manual_inspection'),
+              summary: ai.summaryMessage || data.summaryMessage,
+              labels: ai.detectedLabels || data.detectedLabels
+            });
+          } else {
+            setHfScreening({ status: 'completed', decision: 'unclear_manual_inspection', summary: 'Hugging Face API pending inspection. Sent for manual verification.' });
+          }
+        } catch (err) {
+          setHfScreening({ status: 'completed', decision: 'unclear_manual_inspection', summary: 'AI screening server notice. Report queued for admin inspection.' });
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -109,7 +165,6 @@ export function ReportHazardPage() {
     setSubmitting(true);
 
     try {
-      const apiBase = import.meta.env.VITE_API_BASE || '';
       const token = window.localStorage.getItem('token');
 
       const payload = {
@@ -130,7 +185,7 @@ export function ReportHazardPage() {
         }
       };
 
-      const res = await fetch(`${apiBase}/api/reports`, {
+      const res = await fetch(getApiUrl('/api/reports'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -287,7 +342,7 @@ export function ReportHazardPage() {
                       <img src={photoPreview} alt="Evidence Preview" className="w-full h-full object-cover" />
                       <button
                         type="button"
-                        onClick={() => { setPhoto(null); setPhotoPreview(null); }}
+                        onClick={() => { setPhoto(null); setPhotoPreview(null); setHfScreening({ status: 'idle' }); }}
                         className="absolute top-2 right-2 rounded-full bg-black/70 text-white p-1 text-xs hover:bg-red-600"
                       >
                         ✕
@@ -296,7 +351,61 @@ export function ReportHazardPage() {
                   ) : (
                     <div className="h-48 rounded-xl border border-border/50 bg-card-hover/20 flex flex-col items-center justify-center p-4 text-center text-dim text-xs">
                       <ShieldAlert className="h-8 w-8 text-dim mb-2 opacity-50" />
-                      <span>Photo preview will appear here</span>
+                      <span>Photo preview & Hugging Face AI inspection will appear here</span>
+                    </div>
+                  )}
+
+                  {/* Hugging Face AI Screening Live Preview Banner */}
+                  {photoPreview && (
+                    <div className="col-span-1 md:col-span-2 mt-2">
+                      {hfScreening.status === 'analyzing' && (
+                        <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-cyan-300 text-xs flex items-center gap-2.5">
+                          <Loader2 className="w-4 h-4 animate-spin text-cyan-400 shrink-0" />
+                          <span className="font-semibold">Hugging Face AI inspecting photo (google/vit-base-patch16-224)...</span>
+                        </div>
+                      )}
+
+                      {hfScreening.status === 'completed' && hfScreening.decision === 'accepted' && (
+                        <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-200 text-xs space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold flex items-center gap-1.5 text-emerald-400">
+                              <Check className="w-4 h-4" /> ACCEPTED BY HUGGING FACE AI
+                            </span>
+                            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded uppercase font-bold border border-emerald-500/30">
+                              Disaster Hazard
+                            </span>
+                          </div>
+                          <p className="text-[11px] leading-relaxed opacity-90">{hfScreening.summary}</p>
+                        </div>
+                      )}
+
+                      {hfScreening.status === 'completed' && hfScreening.decision === 'rejected' && (
+                        <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-500/40 text-red-200 text-xs space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold flex items-center gap-1.5 text-red-400">
+                              <XCircle className="w-4 h-4" /> REJECTED BY HUGGING FACE AI
+                            </span>
+                            <span className="text-[10px] bg-red-500/20 text-red-300 px-2 py-0.5 rounded uppercase font-bold border border-red-500/30">
+                              Non-Disaster Image
+                            </span>
+                          </div>
+                          <p className="text-[11px] leading-relaxed opacity-90">{hfScreening.summary}</p>
+                        </div>
+                      )}
+
+                      {hfScreening.status === 'completed' && hfScreening.decision === 'unclear_manual_inspection' && (
+                        <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-xs space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold flex items-center gap-1.5 text-amber-400">
+                              <AlertCircle className="w-4 h-4" /> SENT FOR MANUAL INSPECTION
+                            </span>
+                            <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded uppercase font-bold border border-amber-500/30">
+                              Requires Admin Review
+                            </span>
+                          </div>
+                          <p className="text-[11px] leading-relaxed opacity-90">{hfScreening.summary}</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

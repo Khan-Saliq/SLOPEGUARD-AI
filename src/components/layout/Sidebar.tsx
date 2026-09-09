@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Map, Bell, BarChart3, Route,
-  Mountain, WifiOff, X, Camera, ClipboardList
+  Mountain, WifiOff, X, Camera, ClipboardList, Users
 } from 'lucide-react';
 import { useApp } from '../../hooks/useApp';
 import { Button } from '../ui/Button';
@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 
 const authorityLinks = [
   { to: '/dashboard', icon: LayoutDashboard, key: 'dashboard' },
+  { to: '/assignments', icon: Users, key: 'assignments' },
   { to: '/map', icon: Map, key: 'map' },
   { to: '/roads', icon: Route, key: 'roads' },
   { to: '/safe-route', icon: Route, key: 'safeRoute' },
@@ -65,6 +66,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const label = (key: string) => {
     const map: Record<string, string> = {
       dashboard: 'Dashboard',
+      assignments: 'Report Assignments',
       map: 'Live GIS Map',
       alerts: 'Alerts',
       analytics: 'Analytics',

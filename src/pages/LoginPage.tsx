@@ -1,40 +1,66 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../hooks/useApp';
+import { getApiUrl } from '../lib/utils';
+import { MapPin, Navigation, ShieldCheck } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [location, setLocation] = useState<{ lat: number; lng: number; area?: string; accuracy?: number } | null>(null);
+  const [locLoading, setLocLoading] = useState(false);
   const { login } = useApp();
   const nav = useNavigate();
+
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      setLocLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = parseFloat(pos.coords.latitude.toFixed(5));
+          const lng = parseFloat(pos.coords.longitude.toFixed(5));
+          setLocation({ lat, lng, accuracy: Math.round(pos.coords.accuracy), area: 'Detected Location' });
+          setLocLoading(false);
+        },
+        (err) => {
+          console.warn('Geolocation warning on login:', err.message);
+          setLocLoading(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      );
+    }
+  }, []);
 
   const submit = async (e: any) => {
     e.preventDefault();
     setError(null);
     try {
       if (!email || !password) throw new Error('Please enter email and password');
-      const apiBase = import.meta.env.VITE_API_BASE || '';
-      const url = `${apiBase}/api/login`;
-      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+      const url = getApiUrl('/api/login');
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, location })
+      });
       const data = await res.json();
       if (!res.ok) {
         const msg = data?.error || data?.message || `Login failed (${res.status})`;
         throw new Error(msg);
       }
       login(data.token, data.user);
-      nav('/');
+      nav(data.user?.role === 'authority' ? '/dashboard' : '/citizen');
     } catch (err: any) {
       setError(err.message || 'Login failed');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 px-4">
-      <div className="w-full max-w-md p-8 rounded-2xl bg-slate-900/70 border border-border shadow-lg">
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4 py-12">
+      <div className="w-full max-w-md p-8 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-2xl backdrop-blur-xl">
         <div className="flex items-center gap-3 mb-6">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-transparent overflow-hidden">
-            <img src="/logo.png" alt="Giri Raksha" className="h-12 w-12 object-contain drop-shadow-md" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-800/80 border border-slate-700 overflow-hidden">
+            <img src="/logo.png" alt="Giri Raksha" className="h-10 w-10 object-contain drop-shadow-md" />
           </div>
           <div>
             <h2 className="text-xl font-display font-bold text-white">Giri Raksha</h2>
@@ -42,32 +68,54 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {error && <div className="mb-4 rounded-md bg-red-900/60 px-3 py-2 text-sm text-red-300">{error}</div>}
+        {/* Location Status Indicator */}
+        <div className="mb-5 p-3 rounded-xl bg-slate-800/50 border border-slate-700/60 flex items-center justify-between text-xs text-slate-300">
+          <div className="flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-cyan-400 shrink-0" />
+            <div>
+              <p className="font-semibold text-slate-200">
+                {location ? `GPS Acquired: ${location.lat}, ${location.lng}` : locLoading ? 'Acquiring GPS coordinates...' : 'GPS Location Pending'}
+              </p>
+              {location?.accuracy && (
+                <p className="text-[10px] text-slate-400">Accuracy: ±{location.accuracy}m</p>
+              )}
+            </div>
+          </div>
+          {location && <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />}
+        </div>
+
+        {error && <div className="mb-4 rounded-lg bg-red-950/80 border border-red-800 px-3.5 py-2.5 text-xs font-medium text-red-200">{error}</div>}
 
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="text-xs text-slate-400 mb-2 block">Email</label>
+            <label className="text-xs text-slate-400 mb-1.5 block font-medium">Email Address</label>
             <input
-              className="w-full px-4 py-3 rounded-lg bg-slate-800/60 border border-slate-700 text-white placeholder:text-slate-500 outline-none"
+              className="w-full px-4 py-3 rounded-lg bg-slate-800/60 border border-slate-700 text-white placeholder:text-slate-500 outline-none focus:border-cyan-500 transition-colors"
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="you@example.com"
+              required
             />
           </div>
 
           <div>
-            <label className="text-xs text-slate-400 mb-2 block">Password</label>
+            <label className="text-xs text-slate-400 mb-1.5 block font-medium">Password</label>
             <input
               type="password"
-              className="w-full px-4 py-3 rounded-lg bg-slate-800/60 border border-slate-700 text-white placeholder:text-slate-500 outline-none"
+              className="w-full px-4 py-3 rounded-lg bg-slate-800/60 border border-slate-700 text-white placeholder:text-slate-500 outline-none focus:border-cyan-500 transition-colors"
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="Enter your password"
+              required
             />
           </div>
 
-          <button type="submit" className="w-full mt-2 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold shadow-lg shadow-cyan-500/20 transition-all cursor-pointer">
-            Sign in
+          <button
+            type="submit"
+            className="w-full mt-3 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold shadow-lg shadow-cyan-500/20 transition-all cursor-pointer"
+          >
+            <Navigation className="w-4 h-4 text-slate-950" />
+            Sign in & Sync Location
           </button>
         </form>
 

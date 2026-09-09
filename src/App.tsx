@@ -19,6 +19,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { LandingPage } from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import AssignmentsPage from './pages/AssignmentsPage';
 
 function RoleHome() {
   const { user } = useApp();
@@ -41,6 +42,7 @@ export default function App() {
               <Route element={<Layout />}>
                 <Route path="portal" element={<RoleHome />} />
                 <Route path="dashboard" element={<RequireRole roles={[ 'authority', 'super_admin' ]}><DashboardPage /></RequireRole>} />
+                <Route path="assignments" element={<RequireRole roles={[ 'authority', 'super_admin' ]}><AssignmentsPage /></RequireRole>} />
                 <Route path="map" element={<RequireRole roles={[ 'authority', 'super_admin','field_official' ]}><MapPage /></RequireRole>} />
                 <Route path="alerts" element={<RequireRole roles={[ 'authority','field_official','citizen' ]}><AlertsPage /></RequireRole>} />
                 <Route path="analytics" element={<RequireRole roles={[ 'authority', 'super_admin' ]}><AnalyticsPage /></RequireRole>} />

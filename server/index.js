@@ -370,7 +370,7 @@ app.post('/api/signup', async (req, res) => {
 });
 
 app.post('/api/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, location } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Missing fields' });
   const key = loginKey(req, email);
   if (loginBlocked(key)) return res.status(429).json({ error: 'Too many login attempts. Try again later.' });
@@ -387,8 +387,28 @@ app.post('/api/login', async (req, res) => {
   }
   loginAttempts.delete(key);
   const normalizedRole = user.role === 'admin' ? 'authority' : user.role;
+
+  // Save last known GPS location if provided
+  if (location && (location.lat || location.lng)) {
+    try {
+      await getDb().collection('users').updateOne(
+        { email: user.email },
+        { $set: { lastKnownLocation: location, lastLoginAt: new Date().toISOString() } }
+      );
+    } catch (e) {}
+  }
+
   const token = generateToken({ id: user.id || user._id, role: normalizedRole, name: user.name, email: user.email });
-  res.json({ token, user: { id: user.id || user._id, name: user.name, email: user.email, role: normalizedRole } });
+  res.json({
+    token,
+    user: {
+      id: user.id || user._id,
+      name: user.name,
+      email: user.email,
+      role: normalizedRole,
+      lastKnownLocation: location || user.lastKnownLocation || null
+    }
+  });
 });
 
 app.get('/api/me', authMiddleware, async (req, res) => {

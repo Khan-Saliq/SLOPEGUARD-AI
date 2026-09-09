@@ -98,35 +98,43 @@ function mapLabelsToHazardType(labels, categoryHint = 'landslide') {
   }
 
   let imageRelevance = 'UNKNOWN';
+  let decision = 'unclear_manual_inspection';
   let summaryMessage = '';
 
   if (isHumanPortrait) {
     imageRelevance = 'IRRELEVANT';
+    decision = 'rejected';
     possibleHazardType = 'IRRELEVANT';
-    summaryMessage = '🔴 REJECTED BY AI ML MODEL: Human portrait or selfie photo detected. Please upload an outdoor hazard photo depicting a hill, slope, rockfall, road blockage, or water seepage.';
+    summaryMessage = '🔴 REJECTED BY HUGGING FACE AI: Human portrait or selfie detected. Please upload an outdoor disaster/hazard photo.';
   } else if (isIndoor && !isHazard) {
     imageRelevance = 'IRRELEVANT';
+    decision = 'rejected';
     possibleHazardType = 'IRRELEVANT';
-    summaryMessage = '🔴 REJECTED BY AI ML MODEL: Indoor object, vehicle, or non-terrain item detected. Please upload an outdoor hazard photo.';
-  } else if (isHazard || isOutdoorLandscape) {
+    summaryMessage = '🔴 REJECTED BY HUGGING FACE AI: Indoor object, vehicle, or document detected. Please upload an outdoor hazard photo.';
+  } else if (isHazard) {
     imageRelevance = 'RELEVANT';
-    if (!isHazard) {
-      if (categoryHint === 'water_seepage') possibleHazardType = 'POSSIBLE_WATER_SEEPAGE';
-      else if (categoryHint === 'road_blockage') possibleHazardType = 'POSSIBLE_ROAD_BLOCKAGE';
-      else if (categoryHint === 'crack') possibleHazardType = 'POSSIBLE_CRACK';
-      else possibleHazardType = 'POSSIBLE_LANDSLIDE';
-    }
-    summaryMessage = '🟢 AI ML VERIFIED: HILL, SLOPE, ROCK OR WATER AREA DETECTED. Forwarded to Admin Command Center for manual inspection.';
+    decision = 'accepted';
+    summaryMessage = '🟢 ACCEPTED BY HUGGING FACE AI: High confidence disaster/landslide hazard feature detected.';
+  } else if (isOutdoorLandscape) {
+    imageRelevance = 'POSSIBLY_RELEVANT';
+    decision = 'unclear_manual_inspection';
+    if (categoryHint === 'water_seepage') possibleHazardType = 'POSSIBLE_WATER_SEEPAGE';
+    else if (categoryHint === 'road_blockage') possibleHazardType = 'POSSIBLE_ROAD_BLOCKAGE';
+    else if (categoryHint === 'crack') possibleHazardType = 'POSSIBLE_CRACK';
+    else possibleHazardType = 'POSSIBLE_LANDSLIDE';
+    summaryMessage = '🟡 SENT FOR MANUAL INSPECTION: Outdoor landscape detected with moderate confidence. Requires admin review.';
   } else {
     imageRelevance = 'IRRELEVANT';
+    decision = 'rejected';
     possibleHazardType = 'IRRELEVANT';
-    summaryMessage = '🔴 REJECTED BY AI ML MODEL: No hill, slope, rock or water area detected. Please upload an outdoor hazard photo depicting a hill, slope, rockfall, road blockage, or water seepage.';
+    summaryMessage = '🔴 REJECTED BY HUGGING FACE AI: No slope, rockfall, flood, or landslide hazard feature detected.';
   }
 
   return {
     imageRelevance,
+    decision,
     possibleHazardType,
-    hazardConfidence: Number((topHazardScore || (isHazard || isOutdoorLandscape ? 0.85 : 0.05)).toFixed(2)),
+    hazardConfidence: Number((topHazardScore || (isHazard ? 0.90 : isOutdoorLandscape ? 0.65 : 0.05)).toFixed(2)),
     summaryMessage
   };
 }
@@ -366,7 +374,7 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', col
 async function analyzeImageWithHuggingFace(imageSource, categoryHint = 'landslide', colorHistogram = null) {
   const apiKey = process.env.HUGGINGFACE_API_KEY || process.env.HF_API_KEY;
   const modelName = process.env.HUGGINGFACE_IMAGE_MODEL || 'google/vit-base-patch16-224';
-  const baseUrl = process.env.HUGGINGFACE_API_URL || 'https://api-inference.huggingface.co/models/';
+  const baseUrl = process.env.HUGGINGFACE_API_URL || 'https://router.huggingface.co/hf-inference/v1/models/';
   const processedAt = new Date().toISOString();
 
   let imageBuffer = null;
@@ -389,8 +397,8 @@ async function analyzeImageWithHuggingFace(imageSource, categoryHint = 'landslid
     try {
       const cleanToken = apiKey.trim();
       const endpointList = [
-        `https://router.huggingface.co/hf-inference/models/${modelName}`,
         `https://router.huggingface.co/hf-inference/v1/models/${modelName}`,
+        `https://router.huggingface.co/hf-inference/models/${modelName}`,
         `${baseUrl.replace(/\/$/, '')}/${modelName}`
       ];
 
@@ -423,7 +431,7 @@ async function analyzeImageWithHuggingFace(imageSource, categoryHint = 'landslid
           confidence: Number((item.score || item.confidence || 0).toFixed(2)),
         }));
 
-        const { imageRelevance, possibleHazardType, hazardConfidence, summaryMessage } = mapLabelsToHazardType(
+        const { imageRelevance, decision, possibleHazardType, hazardConfidence, summaryMessage } = mapLabelsToHazardType(
           detectedLabels,
           categoryHint
         );
@@ -431,10 +439,11 @@ async function analyzeImageWithHuggingFace(imageSource, categoryHint = 'landslid
         return {
           analysisStatus: 'COMPLETED',
           imageRelevance,
+          decision,
           detectedLabels,
           possibleHazardType,
           hazardConfidence,
-          requiresHumanVerification: true,
+          requiresHumanVerification: decision === 'unclear_manual_inspection',
           modelName,
           processedAt,
           summaryMessage,
