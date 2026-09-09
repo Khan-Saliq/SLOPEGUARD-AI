@@ -209,25 +209,25 @@ export function ReportHazardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-main text-main p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-slate-950 text-white p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-3xl space-y-6">
         
         {/* Top Breadcrumb & Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/60 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-4">
           <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-accent-bright uppercase tracking-wider">
+            <div className="flex items-center gap-2 text-xs font-semibold text-cyan-400 uppercase tracking-wider">
               <Camera className="h-4 w-4" /> Giri Raksha · Citizen Safety Portal
             </div>
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-main mt-1">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-white mt-1">
               Report a Hazard
             </h1>
-            <p className="text-xs sm:text-sm text-dim mt-1">
+            <p className="text-xs sm:text-sm text-slate-400 mt-1">
               Upload photos & details of landslides, rockfalls, or damaged roads for AI image verification & admin action.
             </p>
           </div>
 
           <Link to="/my-reports">
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button variant="outline" size="sm" className="gap-2 border-slate-800 text-slate-300 hover:bg-slate-900 hover:text-white">
               <FileText className="h-4 w-4" /> My Reports
             </Button>
           </Link>
@@ -242,21 +242,21 @@ export function ReportHazardPage() {
               exit={{ opacity: 0, y: -12 }}
               className="space-y-6"
             >
-              <Card className="border-accent/40 bg-accent/10 p-6 sm:p-8 text-center space-y-4">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent/20 text-accent-bright">
+              <Card className="border-emerald-500/30 bg-slate-900/80 backdrop-blur-xl p-6 sm:p-8 text-center space-y-4 shadow-2xl">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                   <CheckCircle2 className="h-10 w-10" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-main">Hazard Report Submitted Successfully!</h2>
-                  <p className="text-xs text-dim mt-1">Report ID: <span className="font-mono text-accent-bright font-bold">{submittedReport.id}</span></p>
+                  <h2 className="text-xl font-bold text-white">Hazard Report Submitted Successfully!</h2>
+                  <p className="text-xs text-slate-400 mt-1">Report ID: <span className="font-mono text-cyan-400 font-bold">{submittedReport.id}</span></p>
                 </div>
 
                 {/* AI Image Verification Summary Badge */}
                 {submittedReport.aiVerification && (
-                  <div className="mx-auto max-w-md rounded-xl bg-card border border-border p-4 text-left space-y-2 text-xs">
-                    <div className="flex items-center justify-between border-b border-border pb-2">
-                      <span className="font-bold text-main flex items-center gap-1.5">
-                        <Sparkles className="h-4 w-4 text-accent-bright" /> AI Image Verification
+                  <div className="mx-auto max-w-md rounded-xl bg-slate-950/80 border border-slate-800 p-4 text-left space-y-2 text-xs">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <span className="font-bold text-white flex items-center gap-1.5">
+                        <Sparkles className="h-4 w-4 text-cyan-400" /> AI Image Verification
                       </span>
                       <Badge variant={submittedReport.aiVerification.is_relevant ? 'warning' : 'outline'}>
                         {submittedReport.aiVerification.is_relevant ? 'Relevant Hazard' : 'Uncertain / Pending'}
@@ -265,16 +265,16 @@ export function ReportHazardPage() {
 
                     <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
                       <div>
-                        <span className="text-dim block">Confidence Score</span>
-                        <span className="font-bold text-main">{Math.round(submittedReport.aiVerification.confidence * 100)}%</span>
+                        <span className="text-slate-400 block">Confidence Score</span>
+                        <span className="font-bold text-white">{Math.round(submittedReport.aiVerification.confidence * 100)}%</span>
                       </div>
                       <div>
-                        <span className="text-dim block">Apparent Severity</span>
-                        <span className="font-bold uppercase text-accent-warm">{submittedReport.aiVerification.apparent_severity}</span>
+                        <span className="text-slate-400 block">Apparent Severity</span>
+                        <span className="font-bold uppercase text-amber-400">{submittedReport.aiVerification.apparent_severity}</span>
                       </div>
                     </div>
 
-                    <p className="text-[11px] text-dim border-t border-border/40 pt-2">
+                    <p className="text-[11px] text-slate-400 border-t border-slate-800/80 pt-2">
                       {submittedReport.aiVerification.recommendation}
                     </p>
                   </div>
@@ -283,6 +283,7 @@ export function ReportHazardPage() {
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
                   <Button
                     variant="outline"
+                    className="border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white"
                     onClick={() => {
                       setSubmittedReport(null);
                       setPhoto(null);
@@ -293,7 +294,7 @@ export function ReportHazardPage() {
                     Submit Another Report
                   </Button>
                   <Link to="/my-reports">
-                    <Button className="gap-2">
+                    <Button className="gap-2 bg-gradient-to-r from-cyan-500 to-emerald-500 text-slate-950 font-bold shadow-lg shadow-cyan-500/20">
                       View My Reports <ArrowRight className="h-4 w-4" />
                     </Button>
                   </Link>
@@ -308,26 +309,26 @@ export function ReportHazardPage() {
               className="space-y-6"
             >
               {error && (
-                <div className="rounded-xl bg-critical/10 border border-critical/30 p-4 text-xs text-critical flex items-center gap-3">
-                  <AlertTriangle className="h-5 w-5 shrink-0" />
+                <div className="rounded-xl bg-red-950/80 border border-red-800 p-4 text-xs text-red-200 flex items-center gap-3">
+                  <AlertTriangle className="h-5 w-5 shrink-0 text-red-400" />
                   <span>{error}</span>
                 </div>
               )}
 
               {/* Step 1: Photo Upload */}
-              <Card className="p-5 sm:p-6 space-y-4">
-                <div className="flex items-center justify-between border-b border-border/60 pb-3">
-                  <h3 className="text-sm font-bold text-main flex items-center gap-2">
-                    <ImageIcon className="h-4 w-4 text-accent-bright" /> 1. Upload Hazard Evidence Photo
+              <Card className="border-slate-800 bg-slate-900/80 backdrop-blur-xl p-5 sm:p-6 space-y-4 shadow-2xl">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4 text-cyan-400" /> 1. Upload Hazard Evidence Photo
                   </h3>
-                  <span className="text-[10px] text-dim font-mono uppercase bg-accent/10 px-2 py-0.5 rounded">Required</span>
+                  <span className="text-[10px] text-cyan-400 font-mono uppercase bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">Required</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                  <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-accent-bright hover:bg-card-hover/40 transition-colors p-4 text-center">
-                    <Upload className="h-8 w-8 text-accent-bright mb-2" />
-                    <span className="text-xs font-semibold text-main">Click to upload photo or take picture</span>
-                    <span className="text-[10px] text-dim mt-1">Supports JPG, PNG, WEBP up to 10MB</span>
+                  <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-slate-700/80 rounded-xl cursor-pointer hover:border-cyan-400 hover:bg-slate-800/40 transition-colors p-4 text-center group">
+                    <Upload className="h-8 w-8 text-cyan-400 group-hover:scale-110 transition-transform mb-2" />
+                    <span className="text-xs font-semibold text-white">Click to upload photo or take picture</span>
+                    <span className="text-[10px] text-slate-400 mt-1">Supports JPG, PNG, WEBP up to 10MB</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -448,10 +449,10 @@ export function ReportHazardPage() {
               </Card>
 
               {/* Step 2: Location Access */}
-              <Card className="p-5 sm:p-6 space-y-4">
-                <div className="flex items-center justify-between border-b border-border/60 pb-3">
-                  <h3 className="text-sm font-bold text-main flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-accent-bright" /> 2. Location Coordinates & Area
+              <Card className="border-slate-800 bg-slate-900/80 backdrop-blur-xl p-5 sm:p-6 space-y-4 shadow-2xl">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-cyan-400" /> 2. Location Coordinates & Area
                   </h3>
                   <Button
                     type="button"
@@ -459,7 +460,7 @@ export function ReportHazardPage() {
                     size="sm"
                     onClick={handleFetchLocation}
                     disabled={fetchingGps}
-                    className="text-xs gap-1.5"
+                    className="text-xs gap-1.5 border-slate-800 text-slate-300 hover:bg-slate-800"
                   >
                     <RefreshCw className={`h-3.5 w-3.5 ${fetchingGps ? 'animate-spin' : ''}`} />
                     {fetchingGps ? 'Detecting...' : 'Detect GPS'}
@@ -467,63 +468,63 @@ export function ReportHazardPage() {
                 </div>
 
                 {gpsStatus && (
-                  <p className="text-[11px] text-accent-bright font-mono bg-accent/10 p-2 rounded-lg border border-accent/20">
+                  <p className="text-[11px] text-cyan-300 font-mono bg-cyan-950/40 p-2 rounded-lg border border-cyan-500/30">
                     ℹ️ {gpsStatus}
                   </p>
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-semibold text-dim block mb-1">Latitude</label>
+                    <label className="text-xs font-semibold text-slate-400 block mb-1">Latitude</label>
                     <input
                       type="number"
                       step="any"
                       value={lat}
                       onChange={e => setLat(parseFloat(e.target.value))}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-card text-main outline-none focus:border-accent"
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-700 bg-slate-800/60 text-white placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none transition-colors"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-dim block mb-1">Longitude</label>
+                    <label className="text-xs font-semibold text-slate-400 block mb-1">Longitude</label>
                     <input
                       type="number"
                       step="any"
                       value={lng}
                       onChange={e => setLng(parseFloat(e.target.value))}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-card text-main outline-none focus:border-accent"
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-700 bg-slate-800/60 text-white placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none transition-colors"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-dim block mb-1">Area / Landmark</label>
+                    <label className="text-xs font-semibold text-slate-400 block mb-1">Area / Landmark</label>
                     <input
                       type="text"
                       value={areaName}
                       onChange={e => setAreaName(e.target.value)}
                       placeholder="e.g. Cherrapunji Bypass Cut"
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-card text-main outline-none focus:border-accent"
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-700 bg-slate-800/60 text-white placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none transition-colors"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-dim block mb-1">District / State</label>
+                    <label className="text-xs font-semibold text-slate-400 block mb-1">District / State</label>
                     <div className="flex gap-2">
                       <input
                         type="text"
                         value={district}
                         onChange={e => setDistrict(e.target.value)}
-                        className="w-1/2 px-3 py-2 text-xs rounded-lg border border-border bg-card text-main outline-none focus:border-accent"
+                        className="w-1/2 px-3 py-2 text-xs rounded-lg border border-slate-700 bg-slate-800/60 text-white placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none transition-colors"
                         required
                       />
                       <input
                         type="text"
                         value={state}
                         onChange={e => setState(e.target.value)}
-                        className="w-1/2 px-3 py-2 text-xs rounded-lg border border-border bg-card text-main outline-none focus:border-accent"
+                        className="w-1/2 px-3 py-2 text-xs rounded-lg border border-slate-700 bg-slate-800/60 text-white placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none transition-colors"
                         required
                       />
                     </div>
@@ -532,38 +533,38 @@ export function ReportHazardPage() {
               </Card>
 
               {/* Step 3: Hazard Description & Category */}
-              <Card className="p-5 sm:p-6 space-y-4">
-                <div className="flex items-center justify-between border-b border-border/60 pb-3">
-                  <h3 className="text-sm font-bold text-main flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-accent-bright" /> 3. Hazard Details & Category
+              <Card className="border-slate-800 bg-slate-900/80 backdrop-blur-xl p-5 sm:p-6 space-y-4 shadow-2xl">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-cyan-400" /> 3. Hazard Details & Category
                   </h3>
                 </div>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs font-semibold text-dim block mb-1">Hazard Category</label>
+                    <label className="text-xs font-semibold text-slate-400 block mb-1">Hazard Category</label>
                     <select
                       value={category}
                       onChange={e => setCategory(e.target.value)}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-card text-main outline-none focus:border-accent"
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-700 bg-slate-800/60 text-white focus:border-cyan-500 focus:outline-none transition-colors"
                     >
-                      <option value="landslide">Slope Landslide / Debris Flow</option>
-                      <option value="rockfall">Rockfall / Falling Boulders</option>
-                      <option value="mudslide">Mudslide / Topsoil Collapse</option>
-                      <option value="road_blockage">Road Obstruction / Damage</option>
-                      <option value="crack">Ground Fissure / Slope Cracks</option>
-                      <option value="water_seepage">Heavy Hillside Water Seepage</option>
+                      <option value="landslide" className="bg-slate-900 text-white">Slope Landslide / Debris Flow</option>
+                      <option value="rockfall" className="bg-slate-900 text-white">Rockfall / Falling Boulders</option>
+                      <option value="mudslide" className="bg-slate-900 text-white">Mudslide / Topsoil Collapse</option>
+                      <option value="road_blockage" className="bg-slate-900 text-white">Road Obstruction / Damage</option>
+                      <option value="crack" className="bg-slate-900 text-white">Ground Fissure / Slope Cracks</option>
+                      <option value="water_seepage" className="bg-slate-900 text-white">Heavy Hillside Water Seepage</option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-dim block mb-1">Description of Hazard</label>
+                    <label className="text-xs font-semibold text-slate-400 block mb-1">Description of Hazard</label>
                     <textarea
                       rows={4}
                       value={description}
                       onChange={e => setDescription(e.target.value)}
                       placeholder="Describe what you observed (e.g. Fresh soil displacement blocking left lane of NH-40 near km marker 14...)"
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-card text-main outline-none focus:border-accent"
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-700 bg-slate-800/60 text-white placeholder:text-slate-500 focus:border-cyan-500 focus:outline-none transition-colors"
                       required
                     />
                   </div>
@@ -575,7 +576,7 @@ export function ReportHazardPage() {
                 <Button
                   type="submit"
                   disabled={submitting}
-                  className="w-full py-3 text-sm font-bold bg-accent hover:bg-accent-bright text-slate-950 shadow-lg gap-2 justify-center"
+                  className="w-full py-3 text-sm font-bold bg-gradient-to-r from-cyan-500 to-emerald-500 text-slate-950 shadow-lg shadow-cyan-500/20 hover:from-cyan-400 hover:to-emerald-400 gap-2 justify-center transition-all duration-200"
                 >
                   {submitting ? (
                     <>
