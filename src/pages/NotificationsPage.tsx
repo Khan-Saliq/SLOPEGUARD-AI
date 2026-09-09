@@ -60,7 +60,7 @@ export default function NotificationsPage() {
         setItems(prev => [d, ...prev.filter(item => item.id !== d.id)]);
 
         if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification(d.title || 'SLOPEGUARD AI Alert', {
+          new Notification(d.title || 'Giri Raksha Alert', {
             body: d.message || 'Automated landslide early warning update',
             icon: '/logo.png',
           });

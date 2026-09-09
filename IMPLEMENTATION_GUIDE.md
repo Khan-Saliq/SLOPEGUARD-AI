@@ -1,4 +1,4 @@
-# SLOPEGUARD AI - Web Application Implementation Summary
+# Giri Raksha — Web Application Implementation Summary
 
 ## Camera-Only Hazard Reporting
 

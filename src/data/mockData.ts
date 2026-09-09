@@ -34,7 +34,7 @@ export const riskTrend = Array.from({ length: 24 }, (_, i) => ({
 
 export const translations: Record<string, Record<string, string>> = {
   en: {
-    app_title: 'SLOPEGUARD AI · Landslide Risk Monitoring System',
+    app_title: 'Giri Raksha · Landslide Risk Monitoring System',
     command_center: 'Regional Command Center',
     citizen_portal: 'Citizen Warning & Reporting Portal',
     report_hazard: 'Report Hazard Evidence',
@@ -49,7 +49,7 @@ export const translations: Record<string, Record<string, string>> = {
     broadcast_alert: 'Dispatched Emergency Broadcast Alert',
   },
   as: { // Assamese
-    app_title: 'স্লোপগাৰ্ড AI · ভূ-স্খলন সতৰ্কীকৰণ ব্যৱস্থা',
+    app_title: 'গিৰি ৰক্ষা · ভূ-স্খলন সতৰ্কীকৰণ ব্যৱস্থা',
     command_center: 'আঞ্চলিক নিয়ন্ত্ৰণ কক্ষ',
     citizen_portal: 'নাগৰিক সতৰ্কতা পৰ্টেল',
     report_hazard: 'বিপদৰ তথ্য প্ৰেৰণ কৰক',
@@ -64,7 +64,7 @@ export const translations: Record<string, Record<string, string>> = {
     broadcast_alert: 'জৰুৰী সতৰ্কবাণী প্ৰচাৰ কৰা হৈছে',
   },
   kha: { // Khasi (Meghalaya)
-    app_title: 'SLOPEGUARD AI · Ka Jingthaw Jingma Landslide',
+    app_title: 'Giri Raksha · Ka Jingthaw Jingma Landslide',
     command_center: 'Kynhun Command Center',
     citizen_portal: 'Portal Khmat Nongkyndong',
     report_hazard: 'Phah Jingma Khmat Slap',

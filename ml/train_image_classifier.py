@@ -1,5 +1,5 @@
 """
-SLOPEGUARD AI — Image Hazard Verification Model Training Pipeline
+Giri Raksha — Image Hazard Verification Model Training Pipeline
 Problem Statement: PS_26001 (Section 17: Citizen Evidence Intelligence)
 
 This script trains a Computer Vision Classifier (MobileNetV2 / ResNet50 Transfer Learning)
@@ -16,7 +16,7 @@ import numpy as np
 
 def train_hazard_image_classifier():
     print("=" * 70)
-    print("      SLOPEGUARD AI — COMPUTER VISION HAZARD IMAGE CLASSIFIER       ")
+    print("      GIRI RAKSHA — COMPUTER VISION HAZARD IMAGE CLASSIFIER       ")
     print("=" * 70)
     print("Model Architecture: MobileNetV2 Feature Extractor + Dense Head (Softmax)")
     print("Classes: ['hill_mountain_slope', 'water_seepage_body', 'rock_landslide_debris', 'invalid_non_hazard']")

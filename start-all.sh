@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# SlopeGuard AI - Complete System Startup Script
+# Giri Raksha - Complete System Startup Script
 
 echo "=========================================="
-echo "SlopeGuard AI - Starting All Services"
+echo "Giri Raksha - Starting All Services"
 echo "=========================================="
 
 # Check if ports are available

@@ -11,7 +11,7 @@ const { evaluateRouteSafety } = require('./services/routeSafetyService');
 
 async function runAllTests() {
   console.log('================================================================');
-  console.log('🧪 RUNNING SLOPEGUARD-AI 17-POINT VERIFICATION & TEST SUITE');
+  console.log('🧪 RUNNING GIRI RAKSHA 17-POINT VERIFICATION & TEST SUITE');
   console.log('================================================================\n');
 
   const MONGO_URL = process.env.MONGO_URL || process.env.MONGODB_URI;

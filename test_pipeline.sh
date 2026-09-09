@@ -3,7 +3,7 @@
 # Tests: Real APIs → Data Processing → XGBoost → Risk Prediction → Alerts
 
 echo "=========================================="
-echo "SlopeGuard AI - End-to-End Pipeline Test"
+echo "Giri Raksha - End-to-End Pipeline Test"
 echo "=========================================="
 echo ""
 

@@ -1,4 +1,4 @@
-# Testing Guide - SlopeGuard AI Web Application
+# Testing Guide — Giri Raksha Web Application
 
 ## Prerequisites
 

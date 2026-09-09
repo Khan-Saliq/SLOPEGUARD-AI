@@ -126,10 +126,10 @@ export function LandingPage() {
 
               <div>
                 <h1 className="font-display text-4xl sm:text-5xl font-extrabold leading-tight tracking-tight text-white">
-                  SLOPEGUARD <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400">AI</span>
+                  Giri <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400">Raksha</span>
                 </h1>
                 <h2 className="mt-2 text-xl sm:text-2xl font-semibold text-slate-300">
-                  AI-Based Early Warning & Landslide Risk Monitoring System
+                  AI-Based Landslide Risk Monitoring & Early Warning System
                 </h2>
                 <p className="mt-4 text-slate-400 text-base leading-relaxed">
                   Protecting communities across the North Eastern Region through multi-sensor telemetry,
@@ -200,7 +200,7 @@ export function LandingPage() {
                     <span>Project Demonstration Video</span>
                   </div>
                   <span className="rounded-md bg-cyan-950 border border-cyan-500/30 px-2 py-0.5 text-[10px] font-mono text-cyan-400">
-                    HD · SLOPEGUARD AI
+                    HD · Giri Raksha
                   </span>
                 </div>
 
@@ -234,7 +234,7 @@ export function LandingPage() {
             </h2>
             <p className="text-slate-400 text-base leading-relaxed">
               The North Eastern Region of India suffers recurring slope instability, soil saturation failures,
-              flash floods, and critical road blockages during intense monsoon periods. SLOPEGUARD AI transitions monitoring from manual, reactive surveys to proactive AI early warnings.
+              flash floods, and critical road blockages during intense monsoon periods. Giri Raksha transitions monitoring from manual, reactive surveys to proactive AI early warnings.
             </p>
           </div>
 
@@ -315,24 +315,20 @@ export function LandingPage() {
             <div className="flex items-center gap-2 p-1.5 rounded-xl bg-slate-900 border border-slate-800">
               <button
                 onClick={() => setActiveTab('3d')}
-                className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
-                  activeTab === '3d' ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
-                }`}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === '3d' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
               >
-                3D Terrain & Rain Simulation
+                3D Terrain View
               </button>
               <button
                 onClick={() => setActiveTab('gis')}
-                className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
-                  activeTab === 'gis' ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
-                }`}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'gis' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
               >
-                Interactive GIS Risk Map
+                GIS Satellite Map
               </button>
             </div>
           </div>
 
-          <div className="relative h-[480px] w-full rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden shadow-2xl">
+          <div className="h-[450px] rounded-2xl overflow-hidden border border-slate-800 shadow-2xl relative bg-slate-900">
             {activeTab === '3d' ? (
               <Terrain3D zones={riskZones} showRain className="h-full w-full" />
             ) : (
@@ -346,7 +342,7 @@ export function LandingPage() {
       <section id="workflow" className="py-20 border-t border-slate-800/60">
         <div className="mx-auto max-w-7xl px-6">
           <div className="text-center max-w-2xl mx-auto">
-            <h2 className="text-3xl font-bold text-white">How SLOPEGUARD AI Operates</h2>
+            <h2 className="text-3xl font-bold text-white">How Giri Raksha Operates</h2>
             <p className="mt-3 text-sm text-slate-400">Seamless integration between sensors, AI analysis, citizens, and emergency teams</p>
           </div>
 
@@ -371,9 +367,9 @@ export function LandingPage() {
       {/* SECTION 6: Unsigned User Call-to-Action */}
       <section className="py-20 border-t border-slate-800/60 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950/40">
         <div className="mx-auto max-w-5xl px-6 text-center space-y-8">
-          <img src="/logo.png" alt="SLOPEGUARD AI Logo" className="h-20 w-20 mx-auto object-contain drop-shadow-xl" />
+          <img src="/logo.png" alt="Giri Raksha Logo" className="h-20 w-20 mx-auto object-contain drop-shadow-xl" />
           <h2 className="text-3xl sm:text-4xl font-bold text-white">
-            Ready to Explore SLOPEGUARD AI?
+            Ready to Explore Giri Raksha?
           </h2>
           <p className="text-slate-300 max-w-2xl mx-auto text-base">
             Create an account or sign in to access full Command Center dashboards, live risk maps, field task management, and citizen hazard reporting.
@@ -407,8 +403,8 @@ export function LandingPage() {
       <footer className="border-t border-slate-900 bg-slate-950 py-12 px-6 text-xs text-slate-500">
         <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="SLOPEGUARD AI" className="h-7 w-7 object-contain" />
-            <span className="text-slate-300 font-bold">SLOPEGUARD AI</span>
+            <img src="/logo.png" alt="Giri Raksha" className="h-7 w-7 object-contain" />
+            <span className="text-slate-300 font-bold">Giri Raksha</span>
             <span>· Problem Statement PS_26001</span>
           </div>
           <div className="flex items-center gap-6 text-slate-400">
@@ -417,7 +413,7 @@ export function LandingPage() {
             <Link to="/report" className="hover:text-white">Report Hazard</Link>
             <Link to="/citizen" className="hover:text-white">Citizen Portal</Link>
           </div>
-          <p>© {new Date().getFullYear()} SLOPEGUARD AI — All Rights Reserved.</p>
+          <p>© {new Date().getFullYear()} Giri Raksha — All Rights Reserved.</p>
         </div>
       </footer>
     </div>

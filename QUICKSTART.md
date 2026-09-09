@@ -1,4 +1,4 @@
-# 🚀 Quick Start - SlopeGuard AI Web Application
+# 🚀 Quick Start — Giri Raksha Web Application
 
 ## ✅ Implementation Complete
 

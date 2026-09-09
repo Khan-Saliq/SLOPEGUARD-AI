@@ -36,7 +36,7 @@ This guide provides step-by-step instructions to deploy **Giri Raksha — AI-Bas
 ### Step A: Deploy Python Flask ML Service on Render
 1. Sign in to [Render Dashboard](https://dashboard.render.com/).
 2. Click **New +** → **Web Service**.
-3. Connect your GitHub repository (`Giri-Raksha` / `SLOPEGUARD-AI`).
+3. Connect your GitHub repository (`Giri-Raksha`).
 4. Set the following fields:
    * **Name**: `giri-raksha-ml`
    * **Root Directory**: (Leave blank or `ml_service`)
