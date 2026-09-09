@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Camera, MapPin, Upload, AlertTriangle, CheckCircle2, RefreshCw,
   Sparkles, ArrowRight, ShieldAlert, FileText, Image as ImageIcon,
-  Check, XCircle, AlertCircle, Loader2, Scan
+  Check, XCircle, AlertCircle, Loader2, Scan, SwitchCamera, Video
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -54,6 +54,14 @@ export function ReportHazardPage() {
   const [fetchingGps, setFetchingGps] = useState<boolean>(false);
   const [gpsStatus, setGpsStatus] = useState<string | null>(null);
 
+  // Live Device Camera State
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState<boolean>(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
+  const [hasMultipleCameras, setHasMultipleCameras] = useState<boolean>(false);
+
   // Live Hugging Face Screening State
   const [hfScreening, setHfScreening] = useState<{
     status: 'idle' | 'analyzing' | 'completed';
@@ -66,6 +74,15 @@ export function ReportHazardPage() {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [submittedReport, setSubmittedReport] = useState<SubmittedReport | null>(null);
+
+  // Stop camera tracks on unmount
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [cameraStream]);
 
   // Auto-fetch location on mount
   useEffect(() => {
@@ -112,6 +129,130 @@ export function ReportHazardPage() {
     );
   };
 
+  // AI Inspection helper for both camera capture and file upload
+  const runAiInspection = async (base64: string) => {
+    setHfScreening({ status: 'analyzing' });
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(getApiUrl('/api/inspect-media'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ imageUrl: base64, category })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const ai = data.ai_result || data;
+        setHfScreening({
+          status: 'completed',
+          decision: ai.decision || (ai.imageRelevance === 'RELEVANT' ? 'accepted' : ai.imageRelevance === 'IRRELEVANT' ? 'rejected' : 'unclear_manual_inspection'),
+          summary: ai.summaryMessage || data.summaryMessage,
+          labels: ai.detectedLabels || data.detectedLabels
+        });
+      } else {
+        setHfScreening({ status: 'completed', decision: 'unclear_manual_inspection', summary: 'Hugging Face API pending inspection. Sent for manual verification.' });
+      }
+    } catch (err) {
+      setHfScreening({ status: 'completed', decision: 'unclear_manual_inspection', summary: 'AI screening server notice. Report queued for admin inspection.' });
+    }
+  };
+
+  // Start live device camera stream
+  const startCamera = async (mode: 'user' | 'environment' = 'environment') => {
+    setCameraError(null);
+    setIsCameraOpen(true);
+
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraError('Live camera access is not supported by your browser. Please select an image file.');
+      return;
+    }
+
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoInputs = devices.filter(d => d.kind === 'videoinput');
+      setHasMultipleCameras(videoInputs.length > 1);
+
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: mode },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          },
+          audio: false
+        });
+      } catch {
+        // Fallback for laptops/desktop webcams without facingMode support
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false
+        });
+      }
+
+      setCameraStream(stream);
+      setFacingMode(mode);
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(e => console.warn('Video play warning:', e));
+      }
+    } catch (err: any) {
+      console.error('Camera access error:', err);
+      setCameraError(err.message || 'Unable to access live camera. Please grant camera permissions in your browser or select an image file.');
+    }
+  };
+
+  // Stop camera stream
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setIsCameraOpen(false);
+    setCameraError(null);
+  };
+
+  // Switch between front/back cameras
+  const toggleCameraFacingMode = () => {
+    const nextMode = facingMode === 'environment' ? 'user' : 'environment';
+    startCamera(nextMode);
+  };
+
+  // Capture current frame from live stream
+  const capturePhotoFromStream = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const base64 = canvas.toDataURL('image/jpeg', 0.9);
+
+      stopCamera();
+      setPhotoPreview(base64);
+
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], `camera_hazard_${Date.now()}.jpg`, { type: 'image/jpeg' });
+          setPhoto(file);
+        }
+      }, 'image/jpeg', 0.9);
+
+      runAiInspection(base64);
+    }
+  };
+
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -120,34 +261,7 @@ export function ReportHazardPage() {
       reader.onloadend = async () => {
         const base64 = reader.result as string;
         setPhotoPreview(base64);
-
-        // Trigger Live Hugging Face AI Vision Inspection
-        setHfScreening({ status: 'analyzing' });
-        try {
-          const token = localStorage.getItem('token');
-          const res = await fetch(getApiUrl('/api/inspect-media'), {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(token ? { Authorization: `Bearer ${token}` } : {})
-            },
-            body: JSON.stringify({ imageUrl: base64, category })
-          });
-          if (res.ok) {
-            const data = await res.json();
-            const ai = data.ai_result || data;
-            setHfScreening({
-              status: 'completed',
-              decision: ai.decision || (ai.imageRelevance === 'RELEVANT' ? 'accepted' : ai.imageRelevance === 'IRRELEVANT' ? 'rejected' : 'unclear_manual_inspection'),
-              summary: ai.summaryMessage || data.summaryMessage,
-              labels: ai.detectedLabels || data.detectedLabels
-            });
-          } else {
-            setHfScreening({ status: 'completed', decision: 'unclear_manual_inspection', summary: 'Hugging Face API pending inspection. Sent for manual verification.' });
-          }
-        } catch (err) {
-          setHfScreening({ status: 'completed', decision: 'unclear_manual_inspection', summary: 'AI screening server notice. Report queued for admin inspection.' });
-        }
+        runAiInspection(base64);
       };
       reader.readAsDataURL(file);
     }
@@ -222,7 +336,7 @@ export function ReportHazardPage() {
               Report a Hazard
             </h1>
             <p className="text-xs sm:text-sm text-slate-400 mt-1">
-              Upload photos & details of landslides, rockfalls, or damaged roads for AI image verification & admin action.
+              Upload photos or use live device camera to report landslides, rockfalls, or road damage.
             </p>
           </div>
 
@@ -315,137 +429,229 @@ export function ReportHazardPage() {
                 </div>
               )}
 
-              {/* Step 1: Photo Upload */}
+              {/* Step 1: Live Camera Capture or File Upload */}
               <Card className="border-slate-800 bg-slate-900/80 backdrop-blur-xl p-5 sm:p-6 space-y-4 shadow-2xl">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <ImageIcon className="h-4 w-4 text-cyan-400" /> 1. Upload Hazard Evidence Photo
+                    <ImageIcon className="h-4 w-4 text-cyan-400" /> 1. Upload or Capture Hazard Evidence Photo
                   </h3>
-                  <span className="text-[10px] text-cyan-400 font-mono uppercase bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">Required</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-cyan-400 font-mono uppercase bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
+                      All Devices Supported
+                    </span>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                  <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-slate-700/80 rounded-xl cursor-pointer hover:border-cyan-400 hover:bg-slate-800/40 transition-colors p-4 text-center group">
-                    <Upload className="h-8 w-8 text-cyan-400 group-hover:scale-110 transition-transform mb-2" />
-                    <span className="text-xs font-semibold text-white">Click to upload photo or take picture</span>
-                    <span className="text-[10px] text-slate-400 mt-1">Supports JPG, PNG, WEBP up to 10MB</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handlePhotoChange}
-                      className="hidden"
-                    />
-                  </label>
+                {isCameraOpen ? (
+                  <div className="relative rounded-2xl overflow-hidden border-2 border-cyan-500/60 bg-black shadow-2xl space-y-2">
+                    <div className="relative aspect-video w-full bg-slate-950 flex items-center justify-center overflow-hidden">
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover"
+                        onLoadedMetadata={() => videoRef.current?.play()}
+                      />
 
-                  {photoPreview ? (
-                    <div className="relative h-48 rounded-xl overflow-hidden border border-cyan-500/40 bg-black/60 shadow-xl">
-                      <img src={photoPreview} alt="Evidence Preview" className="w-full h-full object-cover" />
-                      
-                      {/* Laser Scanner Beam Overlay during AI inspection */}
-                      {hfScreening.status === 'analyzing' && (
-                        <div className="absolute inset-0 bg-cyan-950/40 backdrop-blur-[1px] pointer-events-none overflow-hidden">
-                          {/* Animated Laser Scan Beam */}
-                          <motion.div
-                            initial={{ top: '0%' }}
-                            animate={{ top: ['0%', '95%', '0%'] }}
-                            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-                            className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_#22d3ee]"
-                          />
-                          {/* Corner Target Markers */}
-                          <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-cyan-400" />
-                          <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-cyan-400" />
-                          <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-cyan-400" />
-                          <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-cyan-400" />
-
-                          {/* Scanning Text Overlay Badge */}
-                          <div className="absolute bottom-2 left-2 right-2 bg-slate-950/85 backdrop-blur-md px-3 py-1.5 rounded-lg border border-cyan-500/40 flex items-center justify-between text-[11px] text-cyan-300">
-                            <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-                              <span className="font-bold tracking-wide">AI Disaster Image Scan in Progress...</span>
-                            </div>
-                            <Scan className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
+                      {/* Viewfinder HUD Overlay */}
+                      <div className="absolute inset-0 pointer-events-none border-[12px] border-black/40 flex flex-col justify-between p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 bg-slate-950/80 backdrop-blur-md px-3 py-1 rounded-full border border-cyan-500/40 text-[11px] text-cyan-400 font-mono font-semibold">
+                            <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                            LIVE DEVICE CAMERA ACTIVE ({facingMode.toUpperCase()})
                           </div>
+
+                          {hasMultipleCameras && (
+                            <button
+                              type="button"
+                              onClick={toggleCameraFacingMode}
+                              className="pointer-events-auto flex items-center gap-1.5 bg-slate-900/90 text-white text-xs px-3 py-1.5 rounded-full border border-slate-700 hover:border-cyan-400 transition-colors"
+                            >
+                              <SwitchCamera className="w-4 h-4 text-cyan-400" /> Switch Camera
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="self-center w-24 h-24 border-2 border-cyan-400/50 rounded-lg flex items-center justify-center relative">
+                          <div className="w-3 h-3 border-t-2 border-l-2 border-cyan-400 absolute top-0 left-0" />
+                          <div className="w-3 h-3 border-t-2 border-r-2 border-cyan-400 absolute top-0 right-0" />
+                          <div className="w-3 h-3 border-b-2 border-l-2 border-cyan-400 absolute bottom-0 left-0" />
+                          <div className="w-3 h-3 border-b-2 border-r-2 border-cyan-400 absolute bottom-0 right-0" />
+                          <div className="w-2 h-2 rounded-full bg-cyan-400/80 animate-pulse" />
+                        </div>
+
+                        <div className="text-center text-[10px] text-cyan-300/80 font-mono bg-slate-950/70 py-1 rounded">
+                          Align hazard scene in frame and press Shutter to capture
+                        </div>
+                      </div>
+
+                      {cameraError && (
+                        <div className="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center space-y-3 text-red-300 z-20">
+                          <AlertCircle className="w-10 h-10 text-red-400" />
+                          <p className="text-xs font-semibold">{cameraError}</p>
+                          <Button size="sm" variant="outline" onClick={() => startCamera(facingMode)}>Retry Camera</Button>
                         </div>
                       )}
+                    </div>
+
+                    {/* Camera Controls Bar */}
+                    <div className="p-4 bg-slate-900 flex items-center justify-between border-t border-slate-800">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={stopCamera}
+                        className="text-xs border-slate-700 text-slate-300 hover:bg-slate-800"
+                      >
+                        Cancel
+                      </Button>
 
                       <button
                         type="button"
-                        onClick={() => { setPhoto(null); setPhotoPreview(null); setHfScreening({ status: 'idle' }); }}
-                        className="absolute top-2 right-2 z-10 rounded-full bg-slate-950/80 text-white p-1 text-xs hover:bg-red-600 transition-colors"
+                        onClick={capturePhotoFromStream}
+                        className="group relative flex items-center justify-center w-14 h-14 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-500/40 transition-all hover:scale-105 active:scale-95"
                       >
-                        ✕
+                        <div className="w-10 h-10 rounded-full border-2 border-slate-950 flex items-center justify-center">
+                          <div className="w-6 h-6 rounded-full bg-slate-950 group-hover:bg-slate-900 transition-colors" />
+                        </div>
                       </button>
-                    </div>
-                  ) : (
-                    <div className="h-48 rounded-xl border border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center p-4 text-center text-slate-500 text-xs">
-                      <ShieldAlert className="h-8 w-8 text-slate-600 mb-2 opacity-50" />
-                      <span>Photo preview & AI hazard scanner will activate upon upload</span>
-                    </div>
-                  )}
 
-                  {/* AI Vision Model Inspection Status Card */}
-                  {photoPreview && (
-                    <div className="col-span-1 md:col-span-2 mt-2">
-                      {hfScreening.status === 'analyzing' && (
-                        <div className="p-3.5 rounded-xl bg-cyan-950/50 border border-cyan-500/40 text-cyan-300 text-xs flex items-center justify-between shadow-lg">
-                          <div className="flex items-center gap-3">
-                            <Loader2 className="w-4 h-4 animate-spin text-cyan-400 shrink-0" />
-                            <div>
-                              <p className="font-bold text-white">AI Vision Hazard Inspection Active</p>
-                              <p className="text-[11px] text-cyan-400/80">Scanning terrain gradient, geological fissures, slope stability, and disaster indicators...</p>
+                      <span className="text-[11px] font-mono text-cyan-400 font-bold uppercase">Tap Shutter</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                    <div className="flex flex-col gap-3">
+                      <button
+                        type="button"
+                        onClick={() => startCamera('environment')}
+                        className="flex flex-col items-center justify-center h-28 rounded-xl border-2 border-cyan-500/50 bg-gradient-to-br from-cyan-950/40 to-slate-900 hover:border-cyan-400 hover:from-cyan-950/70 transition-all p-4 text-center group shadow-lg"
+                      >
+                        <div className="flex items-center gap-2 text-cyan-400 font-bold text-sm mb-1 group-hover:scale-105 transition-transform">
+                          <Video className="h-5 w-5 animate-pulse" /> Take Live Photo with Device Camera
+                        </div>
+                        <span className="text-[11px] text-slate-300">Opens live webcam on laptop, phone, or tablet</span>
+                      </button>
+
+                      <label className="flex items-center justify-center gap-2 h-16 border-2 border-dashed border-slate-700/80 rounded-xl cursor-pointer hover:border-cyan-400 hover:bg-slate-800/40 transition-colors p-3 text-center group">
+                        <Upload className="h-4 w-4 text-cyan-400 group-hover:scale-110 transition-transform" />
+                        <span className="text-xs font-semibold text-slate-300">Or Upload Image File</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={handlePhotoChange}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    {photoPreview ? (
+                      <div className="relative h-48 rounded-xl overflow-hidden border border-cyan-500/40 bg-black/60 shadow-xl">
+                        <img src={photoPreview} alt="Evidence Preview" className="w-full h-full object-cover" />
+                        
+                        {/* Laser Scanner Beam Overlay during AI inspection */}
+                        {hfScreening.status === 'analyzing' && (
+                          <div className="absolute inset-0 bg-cyan-950/40 backdrop-blur-[1px] pointer-events-none overflow-hidden">
+                            <motion.div
+                              initial={{ top: '0%' }}
+                              animate={{ top: ['0%', '95%', '0%'] }}
+                              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                              className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_#22d3ee]"
+                            />
+                            <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-cyan-400" />
+                            <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-cyan-400" />
+                            <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-cyan-400" />
+                            <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-cyan-400" />
+
+                            <div className="absolute bottom-2 left-2 right-2 bg-slate-950/85 backdrop-blur-md px-3 py-1.5 rounded-lg border border-cyan-500/40 flex items-center justify-between text-[11px] text-cyan-300">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+                                <span className="font-bold tracking-wide">AI Disaster Image Scan in Progress...</span>
+                              </div>
+                              <Scan className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
                             </div>
                           </div>
-                          <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 uppercase tracking-wider animate-pulse shrink-0">
-                            SCANNING
-                          </span>
-                        </div>
-                      )}
+                        )}
 
-                      {hfScreening.status === 'completed' && hfScreening.decision === 'accepted' && (
-                        <div className="p-3.5 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-200 text-xs space-y-1 shadow-lg">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold flex items-center gap-1.5 text-emerald-400">
-                              <Check className="w-4 h-4" /> ACCEPTED BY AI DISASTER SCREENER
-                            </span>
-                            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full uppercase font-bold border border-emerald-500/40">
-                              Disaster Hazard Confirmed
+                        <button
+                          type="button"
+                          onClick={() => { setPhoto(null); setPhotoPreview(null); setHfScreening({ status: 'idle' }); }}
+                          className="absolute top-2 right-2 z-10 rounded-full bg-slate-950/80 text-white p-1 text-xs hover:bg-red-600 transition-colors"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="h-48 rounded-xl border border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center p-4 text-center text-slate-500 text-xs">
+                        <ShieldAlert className="h-8 w-8 text-slate-600 mb-2 opacity-50" />
+                        <span>Photo preview & AI hazard scanner will activate upon camera capture or file upload</span>
+                      </div>
+                    )}
+
+                    {/* AI Vision Model Inspection Status Card */}
+                    {photoPreview && (
+                      <div className="col-span-1 md:col-span-2 mt-2">
+                        {hfScreening.status === 'analyzing' && (
+                          <div className="p-3.5 rounded-xl bg-cyan-950/50 border border-cyan-500/40 text-cyan-300 text-xs flex items-center justify-between shadow-lg">
+                            <div className="flex items-center gap-3">
+                              <Loader2 className="w-4 h-4 animate-spin text-cyan-400 shrink-0" />
+                              <div>
+                                <p className="font-bold text-white">AI Vision Hazard Inspection Active</p>
+                                <p className="text-[11px] text-cyan-400/80">Scanning terrain gradient, geological fissures, slope stability, and disaster indicators...</p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 uppercase tracking-wider animate-pulse shrink-0">
+                              SCANNING
                             </span>
                           </div>
-                          <p className="text-[11px] leading-relaxed opacity-90">{hfScreening.summary}</p>
-                        </div>
-                      )}
+                        )}
 
-                      {hfScreening.status === 'completed' && hfScreening.decision === 'rejected' && (
-                        <div className="p-3.5 rounded-xl bg-red-950/50 border border-red-500/40 text-red-200 text-xs space-y-1 shadow-lg">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold flex items-center gap-1.5 text-red-400">
-                              <XCircle className="w-4 h-4" /> REJECTED BY AI DISASTER SCREENER
-                            </span>
-                            <span className="text-[10px] bg-red-500/20 text-red-300 px-2.5 py-0.5 rounded-full uppercase font-bold border border-red-500/40">
-                              Non-Disaster Image
-                            </span>
+                        {hfScreening.status === 'completed' && hfScreening.decision === 'accepted' && (
+                          <div className="p-3.5 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-200 text-xs space-y-1 shadow-lg">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold flex items-center gap-1.5 text-emerald-400">
+                                <Check className="w-4 h-4" /> ACCEPTED BY AI DISASTER SCREENER
+                              </span>
+                              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full uppercase font-bold border border-emerald-500/40">
+                                Disaster Hazard Confirmed
+                              </span>
+                            </div>
+                            <p className="text-[11px] leading-relaxed opacity-90">{hfScreening.summary}</p>
                           </div>
-                          <p className="text-[11px] leading-relaxed opacity-90">{hfScreening.summary}</p>
-                        </div>
-                      )}
+                        )}
 
-                      {hfScreening.status === 'completed' && hfScreening.decision === 'unclear_manual_inspection' && (
-                        <div className="p-3.5 rounded-xl bg-amber-950/50 border border-amber-500/40 text-amber-200 text-xs space-y-1 shadow-lg">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold flex items-center gap-1.5 text-amber-400">
-                              <AlertCircle className="w-4 h-4" /> SENT FOR MANUAL ADMIN INSPECTION
-                            </span>
-                            <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2.5 py-0.5 rounded-full uppercase font-bold border border-amber-500/40">
-                              Requires Admin Review
-                            </span>
+                        {hfScreening.status === 'completed' && hfScreening.decision === 'rejected' && (
+                          <div className="p-3.5 rounded-xl bg-red-950/50 border border-red-500/40 text-red-200 text-xs space-y-1 shadow-lg">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold flex items-center gap-1.5 text-red-400">
+                                <XCircle className="w-4 h-4" /> REJECTED BY AI DISASTER SCREENER
+                              </span>
+                              <span className="text-[10px] bg-red-500/20 text-red-300 px-2.5 py-0.5 rounded-full uppercase font-bold border border-red-500/40">
+                                Non-Disaster Image
+                              </span>
+                            </div>
+                            <p className="text-[11px] leading-relaxed opacity-90">{hfScreening.summary}</p>
                           </div>
-                          <p className="text-[11px] leading-relaxed opacity-90">{hfScreening.summary}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                        )}
+
+                        {hfScreening.status === 'completed' && hfScreening.decision === 'unclear_manual_inspection' && (
+                          <div className="p-3.5 rounded-xl bg-amber-950/50 border border-amber-500/40 text-amber-200 text-xs space-y-1 shadow-lg">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold flex items-center gap-1.5 text-amber-400">
+                                <AlertCircle className="w-4 h-4" /> SENT FOR MANUAL ADMIN INSPECTION
+                              </span>
+                              <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2.5 py-0.5 rounded-full uppercase font-bold border border-amber-500/40">
+                                Requires Admin Review
+                              </span>
+                            </div>
+                            <p className="text-[11px] leading-relaxed opacity-90">{hfScreening.summary}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </Card>
 
               {/* Step 2: Location Access */}
