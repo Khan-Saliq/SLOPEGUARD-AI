@@ -22,7 +22,7 @@ import { clamp } from '../lib/riskEngine';
 
 export type OutputDisplayMode = 'text' | 'graphical' | 'both';
 
-import { PredictionTestingPanel } from '../components/dashboard/PredictionTestingPanel';
+// import { PredictionTestingPanel } from '../components/dashboard/PredictionTestingPanel';
 
 export function AnalyticsPage() {
   const { districts, riskZones, roads, alerts } = useMonitorData();
@@ -83,8 +83,8 @@ export function AnalyticsPage() {
         onToggleEvaluatorMode={() => setShowEvaluatorExplanations(!showEvaluatorExplanations)}
       />
 
-      {/* ML Prediction Model Demonstration & Testing Panel */}
-      <PredictionTestingPanel />
+      {/* ML Prediction Model Demonstration & Testing Panel (Commented out) */}
+      {/* <PredictionTestingPanel /> */}
 
       {/* Output Mode Switcher Bar: Text Mode (Default) vs Graphical / Visualization Mode */}
       <div className="rounded-xl border border-accent-bright/50 bg-gradient-to-r from-card via-card-hover to-card p-3 shadow-md flex flex-wrap items-center justify-between gap-3">
