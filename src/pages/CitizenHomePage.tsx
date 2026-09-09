@@ -83,12 +83,49 @@ export function CitizenHomePage() {
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header Banner */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center flex flex-col items-center">
-        <img src="/logo.png" alt="SLOPEGUARD AI Logo" className="h-16 w-16 mb-2 object-contain drop-shadow-md" />
-        <h1 className="font-display text-2xl font-bold text-main">SLOPEGUARD AI</h1>
+        <img src="/logo.png" alt="Giri Raksha Logo" className="h-16 w-16 mb-2 object-contain drop-shadow-md" />
+        <h1 className="font-display text-2xl font-bold text-main">Giri Raksha</h1>
         <p className="text-xs text-accent-bright font-mono uppercase tracking-wider mt-1">
-          Automated Landslide Risk Early Warning Platform
+          AI-Based Landslide Risk Monitoring & Early Warning System
         </p>
       </motion.div>
+
+      {/* Quick Action Bar: Report Hazard & Safe Routes */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Link to="/report">
+          <Card className="p-4 bg-gradient-to-r from-accent/20 to-accent-bright/10 border-accent/40 hover:border-accent-bright transition-all cursor-pointer group">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-accent/20 text-accent-bright flex items-center justify-center font-bold">
+                  📷
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-main group-hover:text-accent-bright transition-colors">Report a Hazard</h3>
+                  <p className="text-[11px] text-dim">Upload photo & location for AI verification</p>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-accent-bright group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Card>
+        </Link>
+
+        <Link to="/safe-route">
+          <Card className="p-4 bg-gradient-to-r from-emerald-500/20 to-teal-500/10 border-emerald-500/40 hover:border-emerald-400 transition-all cursor-pointer group">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                  🛣️
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-main group-hover:text-emerald-400 transition-colors">Safe Evacuation Routes</h3>
+                  <p className="text-[11px] text-dim">Dynamic navigation avoiding risk zones</p>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Card>
+        </Link>
+      </div>
 
       {/* Location Status & Detector Bar */}
       <Card className="border-accent/40 bg-card/90 shadow-lg">

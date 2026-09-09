@@ -89,8 +89,8 @@ export function SettingsPage() {
       <Card>
         <CardContent>
           <p className="text-sm text-slate-400">
-            SLOPEGUARD AI — AI-Based Early Warning and Landslide Risk Monitoring System for the North Eastern Region (NER).
-            Frontend prototype v1.0 — PS_26001
+            Giri Raksha — AI-Based Landslide Risk Monitoring and Early Warning System.
+            System Version v1.0 — PS_26001
           </p>
           <p className="text-xs text-slate-500 mt-2">
             Combines rainfall, soil moisture, satellite imagery, terrain data, historical records,

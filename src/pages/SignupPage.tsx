@@ -33,10 +33,10 @@ export default function SignupPage() {
       <div className="w-full max-w-md p-8 rounded-2xl bg-slate-900/70 border border-slate-800 shadow-2xl backdrop-blur-xl">
         <div className="flex items-center gap-3 mb-6">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-800 border border-slate-700 overflow-hidden">
-            <img src="/logo.png" alt="SLOPEGUARD AI" className="h-12 w-12 object-contain drop-shadow-md" />
+            <img src="/logo.png" alt="Giri Raksha" className="h-12 w-12 object-contain drop-shadow-md" />
           </div>
           <div>
-            <h2 className="text-xl font-display font-bold text-white">SLOPEGUARD AI</h2>
+            <h2 className="text-xl font-display font-bold text-white">Giri Raksha</h2>
             <p className="text-xs text-slate-400">Create an account to continue</p>
           </div>
         </div>

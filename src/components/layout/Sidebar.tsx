@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Map, Bell, BarChart3, Route,
-  Mountain, WifiOff, X,
+  Mountain, WifiOff, X, Camera, ClipboardList
 } from 'lucide-react';
 import { useApp } from '../../hooks/useApp';
 import { Button } from '../ui/Button';
@@ -22,6 +22,8 @@ const authorityLinks = [
 
 const citizenLinks = [
   { to: '/citizen', icon: Mountain, key: 'citizenHome' },
+  { to: '/report', icon: Camera, key: 'reportHazard' },
+  { to: '/my-reports', icon: ClipboardList, key: 'myReports' },
   { to: '/safe-route', icon: Route, key: 'safeRoute' },
   { to: '/alerts', icon: Bell, key: 'alerts' },
   { to: '/notifications', icon: Bell, key: 'notifications' },
@@ -68,6 +70,8 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       analytics: 'Analytics',
       roads: 'Roads & Restrictions',
       citizenHome: 'Citizen Portal',
+      reportHazard: 'Report Hazard',
+      myReports: 'My Submitted Reports',
       safeRoute: 'Safe Evacuation Routes',
       notifications: 'Notifications',
       settings: 'Settings',
@@ -88,11 +92,11 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl overflow-hidden shrink-0">
-            <img src="/logo.png" alt="SLOPEGUARD AI" className="h-9 w-9 object-contain drop-shadow-sm" />
+            <img src="/logo.png" alt="Giri Raksha" className="h-9 w-9 object-contain drop-shadow-sm" />
           </div>
           <div>
-            <h1 className="font-display text-sm font-bold text-main leading-tight">SLOPEGUARD AI</h1>
-            <p className="text-[10px] text-dim">Risk Monitor · Live</p>
+            <h1 className="font-display text-sm font-bold text-main leading-tight">Giri Raksha</h1>
+            <p className="text-[10px] text-dim">Landslide Warning System</p>
           </div>
         </div>
 

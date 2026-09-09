@@ -13,6 +13,8 @@ import { RoadsPage } from './pages/RoadsPage';
 import SafeRoutePage from './pages/SafeRoutePage';
 import NotificationsPage from './pages/NotificationsPage';
 import { CitizenHomePage } from './pages/CitizenHomePage';
+import { ReportHazardPage } from './pages/ReportHazardPage';
+import { ReportHistoryPage } from './pages/ReportHistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LandingPage } from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
@@ -46,6 +48,8 @@ export default function App() {
                 <Route path="safe-route" element={<SafeRoutePage />} />
                 <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="citizen" element={<CitizenHomePage />} />
+                <Route path="report" element={<ReportHazardPage />} />
+                <Route path="my-reports" element={<ReportHistoryPage />} />
                 <Route path="settings" element={<SettingsPage />} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />

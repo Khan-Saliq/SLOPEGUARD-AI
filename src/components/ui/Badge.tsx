@@ -22,6 +22,20 @@ export function RiskBadge({ level, size = 'sm', pulse }: BadgeProps) {
   );
 }
 
+export function Badge({ children, variant = 'outline', className }: { children: React.ReactNode; variant?: 'success' | 'warning' | 'critical' | 'outline'; className?: string }) {
+  const variantStyles = {
+    success: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+    warning: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+    critical: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
+    outline: 'bg-card-hover/60 text-dim border-border/60',
+  };
+  return (
+    <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold', variantStyles[variant], className)}>
+      {children}
+    </span>
+  );
+}
+
 export function StatusBadge({ status = 'unknown', className }: { status?: string; className?: string }) {
   const safeStatus = status || 'unknown';
   const colors: Record<string, string> = {

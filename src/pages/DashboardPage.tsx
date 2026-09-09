@@ -12,6 +12,7 @@ import { GISMap } from '../components/map/GISMap';
 import { Terrain3D } from '../components/map/Terrain3D';
 import { RiskOrbit3D } from '../components/3d/RiskOrbit3D';
 import { SatelliteLayerControl, type SatelliteLayerMode } from '../components/map/SatelliteLayerControl';
+import { CitizenReportsPanel } from '../components/dashboard/CitizenReportsPanel';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { RiskBadge } from '../components/ui/Badge';
 import { EvaluatorExplanationCard, EvaluatorHeaderBanner } from '../components/ui/EvaluatorExplanationCard';
@@ -633,6 +634,11 @@ export function DashboardPage() {
               )}
             </CardContent>
           </Card>
+        </div>
+
+        {/* Citizen Field Reports & AI Image Verification Management Queue */}
+        <div className="col-span-1 lg:col-span-12">
+          <CitizenReportsPanel />
         </div>
       </div>
     </div>

@@ -52,7 +52,7 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
             {(user?.role ?? 'citizen') === 'authority' ? t('command_center') : t('citizen_portal')}
           </h2>
           <p className="text-[10px] sm:text-xs text-dim hidden xs:block">
-            SLOPEGUARD AI · {t('live_monitoring')}
+            Giri Raksha · {t('live_monitoring')}
           </p>
         </div>
       </div>

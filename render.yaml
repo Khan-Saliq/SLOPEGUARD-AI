@@ -1,0 +1,34 @@
+services:
+  # 1. Python Flask XGBoost ML Service
+  - type: web
+    name: giri-raksha-ml
+    env: python
+    region: singapore
+    plan: free
+    buildCommand: pip install -r ml_service/requirements.txt
+    startCommand: python ml_service/app.py
+    envVars:
+      - key: PORT
+        value: 5000
+
+  # 2. Node.js Backend Server API
+  - type: web
+    name: giri-raksha-api
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: node server/index.js
+    envVars:
+      - key: PORT
+        value: 4000
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGO_URL
+        sync: false
+      - key: ML_SERVICE_URL
+        value: https://giri-raksha-ml.onrender.com
+      - key: CORS_ORIGIN
+        value: "*"

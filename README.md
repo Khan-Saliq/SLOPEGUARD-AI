@@ -1,11 +1,9 @@
-# SLOPEGUARD AI
+# Giri Raksha — AI-Based Landslide Risk Monitoring and Early Warning System
 
-**AI-Based Early Warning & Landslide Risk Monitoring System for North Eastern Region (NER)**
-
-![SLOPEGUARD AI Logo](./public/logo.png)
+![Giri Raksha Logo](./public/logo.png)
 
 ## Overview
-SLOPEGUARD AI is an advanced AI/ML powered landslide risk monitoring, forecasting, and early warning system designed specifically for high-risk zones in the North Eastern Region of India.
+**Giri Raksha** is an advanced AI/ML powered landslide risk monitoring, forecasting, and early warning system designed specifically for high-risk zones. It integrates continuous automated weather telemetry & XGBoost ML predictions with a citizen hazard reporting workflow featuring AI image verification.
 
 ### Key Features
 - **GIS Risk Mapping**: Real-time interactive map layers displaying critical, high, moderate, and low risk zones.

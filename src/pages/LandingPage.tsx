@@ -59,14 +59,14 @@ export function LandingPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <Link to="/" className="flex items-center gap-3 group">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 border border-slate-800 p-1 group-hover:border-cyan-500/50 transition-colors">
-              <img src="/logo.png" alt="SLOPEGUARD AI Logo" className="h-full w-full object-contain" />
+              <img src="/logo.png" alt="Giri Raksha Logo" className="h-full w-full object-contain" />
             </div>
             <div>
               <span className="font-display text-lg font-bold text-white tracking-wide flex items-center gap-1.5">
-                SLOPEGUARD AI
+                Giri Raksha
                 <span className="inline-block h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
               </span>
-              <p className="text-[11px] text-slate-400 font-medium">NER Landslide Risk & Early Warning System</p>
+              <p className="text-[11px] text-slate-400 font-medium">AI-Based Landslide Risk Monitoring & Early Warning System</p>
             </div>
           </Link>
 
