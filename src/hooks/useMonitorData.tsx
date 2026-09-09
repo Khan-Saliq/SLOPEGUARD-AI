@@ -30,6 +30,7 @@ import type {
   WeatherData,
 } from '../types';
 import { useApp } from './useApp';
+import { getApiUrl } from '../lib/utils';
 
 export const INITIAL_INDIA_RISK_ZONES: RiskZone[] = [
   {
@@ -561,7 +562,7 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
 
   const refreshRoads = useCallback(async () => {
     try {
-      const r = await fetch('/api/roads');
+      const r = await fetch(getApiUrl('/api/roads'));
       if (r.ok) {
         const data = await r.json();
         if (Array.isArray(data) && data.length > 0) {
@@ -575,7 +576,7 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
 
   const refreshShelters = useCallback(async () => {
     try {
-      const r = await fetch('/api/shelters');
+      const r = await fetch(getApiUrl('/api/shelters'));
       if (r.ok) {
         const data = await r.json();
         if (Array.isArray(data) && data.length > 0) {
@@ -589,7 +590,7 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
 
   const refreshHospitals = useCallback(async () => {
     try {
-      const r = await fetch('/api/hospitals');
+      const r = await fetch(getApiUrl('/api/hospitals'));
       if (r.ok) {
         const data = await r.json();
         if (Array.isArray(data) && data.length > 0) {
@@ -603,7 +604,7 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
 
   const refreshEvacuationRoutes = useCallback(async () => {
     try {
-      const r = await fetch('/api/evacuation-routes');
+      const r = await fetch(getApiUrl('/api/evacuation-routes'));
       if (r.ok) {
         const data = await r.json();
         if (Array.isArray(data) && data.length > 0) {
@@ -622,7 +623,7 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
       
-      const response = await fetch('/api/risk-zones/refresh', { method: 'POST', headers });
+      const response = await fetch(getApiUrl('/api/risk-zones/refresh'), { method: 'POST', headers });
 
       if (!response.ok) {
         setIsLoading(false);
@@ -647,17 +648,17 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
-    fetch('/api/risk-zones', { headers })
+    fetch(getApiUrl('/api/risk-zones'), { headers })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setRiskZones(data); })
       .catch(() => {});
 
-    fetch('/api/alerts', { headers })
+    fetch(getApiUrl('/api/alerts'), { headers })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setAlerts(data); })
       .catch(() => {});
 
-    fetch('/api/reports', { headers })
+    fetch(getApiUrl('/api/reports'), { headers })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setCitizenReports(data); })
       .catch(() => {});
@@ -674,7 +675,7 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
 
     if (token) {
       try {
-        await fetch(`/api/roads/${roadId}`, {
+        await fetch(getApiUrl(`/api/roads/${roadId}`), {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ status, reason }),
@@ -707,7 +708,7 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
 
     if (token) {
       try {
-        const res = await fetch('/api/evacuation-routes', {
+        const res = await fetch(getApiUrl('/api/evacuation-routes'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify(newRoute),
@@ -728,7 +729,7 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
 
     if (token) {
       try {
-        await fetch(`/api/evacuation-routes/${routeId}/suspend`, {
+        await fetch(getApiUrl(`/api/evacuation-routes/${routeId}/suspend`), {
           method: 'PATCH',
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -780,7 +781,7 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
       setCitizenReports(prev => [report, ...prev]);
 
       if (token) {
-        fetch('/api/reports', {
+        fetch(getApiUrl('/api/reports'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify(input),
@@ -807,7 +808,7 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
   const refreshReports = useCallback(async () => {
     try {
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-      const r = await fetch('/api/reports', { headers });
+      const r = await fetch(getApiUrl('/api/reports'), { headers });
       if (r.ok) {
         const data = await r.json();
         if (Array.isArray(data)) setCitizenReports(data);
@@ -821,7 +822,7 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
     setCitizenReports(prev => prev.filter(r => r.id !== id));
     if (token) {
       try {
-        const res = await fetch(`/api/reports/${id}`, {
+        const res = await fetch(getApiUrl(`/api/reports/${id}`), {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -862,7 +863,7 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
 
       if (token) {
         try {
-          await fetch('/api/alerts', {
+          await fetch(getApiUrl('/api/alerts'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify(alertObj),

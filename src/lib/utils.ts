@@ -53,3 +53,13 @@ export function getRiskScoreColor(score: number): string {
   if (score >= 40) return RISK_COLORS.moderate;
   return RISK_COLORS.low;
 }
+
+export function getApiUrl(path: string): string {
+  const envApi = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || '').trim();
+  if (envApi) {
+    const base = envApi.replace(/\/$/, '');
+    const endpoint = path.startsWith('/') ? path : `/${path}`;
+    return `${base}${endpoint}`;
+  }
+  return path;
+}

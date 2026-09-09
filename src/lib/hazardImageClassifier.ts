@@ -3,6 +3,8 @@
  * Interfaces with Backend Hugging Face Vision API service for hazard relevance screening.
  */
 
+import { getApiUrl } from './utils';
+
 export interface LabelConfidence {
   label: string;
   confidence: number;
@@ -197,7 +199,7 @@ async function tryBackendHuggingFaceInspection(
 ): Promise<MLInspectionResult | null> {
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch('/api/inspect-media', {
+    const response = await fetch(getApiUrl('/api/inspect-media'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

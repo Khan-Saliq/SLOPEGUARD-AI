@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { User } from '../types';
+import { getApiUrl } from '../lib/utils';
 
 interface AppContextType {
   user: User | null;
@@ -34,7 +35,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (token) {
       localStorage.setItem('token', token);
       // fetch /api/me
-      fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } })
+      fetch(getApiUrl('/api/me'), { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.json())
         .then(data => setUser(data))
         .catch(() => { setUser(null); setToken(null); localStorage.removeItem('token'); });

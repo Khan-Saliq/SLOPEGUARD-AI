@@ -4,6 +4,8 @@
  * Fallback to OSRM if ORS is unavailable
  */
 
+import { getApiUrl } from './utils';
+
 export interface RoutePoint {
   lat: number;
   lng: number;
@@ -202,7 +204,7 @@ async function calculateRouteBackend(
   end: RoutePoint
 ): Promise<RouteResult> {
   const token = localStorage.getItem('token');
-  const response = await fetch('/api/routes/directions', {
+  const response = await fetch(getApiUrl('/api/routes/directions'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -236,7 +238,7 @@ async function calculateRouteBackend(
 export async function fetchAlternativeRoutes(start: RoutePoint, end: RoutePoint) {
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch('/api/routes/alternatives', {
+    const response = await fetch(getApiUrl('/api/routes/alternatives'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

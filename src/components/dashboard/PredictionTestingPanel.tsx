@@ -6,6 +6,7 @@ import { RiskBadge } from '../ui/Badge';
 import { TEST_SCENARIOS } from '../../data/scenarios';
 import { useMonitorData } from '../../hooks/useMonitorData';
 import { useApp } from '../../hooks/useApp';
+import { getApiUrl } from '../../lib/utils';
 import {
   Cpu,
   Play,
@@ -63,7 +64,7 @@ export function PredictionTestingPanel() {
     setError(null);
 
     try {
-      const res = await fetch('/api/simulation/run-scenario', {
+      const res = await fetch(getApiUrl('/api/simulation/run-scenario'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -96,7 +97,7 @@ export function PredictionTestingPanel() {
     setError(null);
 
     try {
-      const res = await fetch('/api/simulation/reset', {
+      const res = await fetch(getApiUrl('/api/simulation/reset'), {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });

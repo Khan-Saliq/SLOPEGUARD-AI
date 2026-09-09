@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useApp } from '../hooks/useApp';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { formatRelativeTime } from '../lib/utils';
+import { formatRelativeTime, getApiUrl } from '../lib/utils';
 import {
   Bell,
   CheckCircle2,
@@ -24,7 +24,7 @@ export default function NotificationsPage() {
   const fetchNotifications = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/notifications', {
+      const res = await fetch(getApiUrl('/api/notifications'), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -47,11 +47,7 @@ export default function NotificationsPage() {
   useEffect(() => {
     const tokenVal = window.localStorage.getItem('token');
     if (!tokenVal) return;
-    const host = window.location.hostname;
-    const streamUrl =
-      host === 'localhost' || host === '127.0.0.1'
-        ? `http://localhost:4000/api/stream?token=${encodeURIComponent(tokenVal)}`
-        : `/api/stream?token=${encodeURIComponent(tokenVal)}`;
+    const streamUrl = getApiUrl(`/api/stream?token=${encodeURIComponent(tokenVal)}`);
     const es = new EventSource(streamUrl);
 
     const onNotification = (ev: MessageEvent) => {
@@ -77,7 +73,7 @@ export default function NotificationsPage() {
 
   const markRead = async (id: string) => {
     try {
-      await fetch(`/api/notifications/${id}/read`, {
+      await fetch(getApiUrl(`/api/notifications/${id}/read`), {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -91,7 +87,7 @@ export default function NotificationsPage() {
     const unreadItems = items.filter(n => !n.read);
     await Promise.all(
       unreadItems.map(n =>
-        fetch(`/api/notifications/${n.id}/read`, {
+        fetch(getApiUrl(`/api/notifications/${n.id}/read`), {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => {})
