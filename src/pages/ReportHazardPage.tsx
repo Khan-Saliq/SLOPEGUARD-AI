@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Camera, MapPin, Upload, AlertTriangle, CheckCircle2, RefreshCw,
   Sparkles, ArrowRight, ShieldAlert, FileText, Image as ImageIcon,
-  Check, XCircle, AlertCircle, Loader2
+  Check, XCircle, AlertCircle, Loader2, Scan
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -338,41 +338,77 @@ export function ReportHazardPage() {
                   </label>
 
                   {photoPreview ? (
-                    <div className="relative h-48 rounded-xl overflow-hidden border border-border bg-black/40">
+                    <div className="relative h-48 rounded-xl overflow-hidden border border-cyan-500/40 bg-black/60 shadow-xl">
                       <img src={photoPreview} alt="Evidence Preview" className="w-full h-full object-cover" />
+                      
+                      {/* Laser Scanner Beam Overlay during AI inspection */}
+                      {hfScreening.status === 'analyzing' && (
+                        <div className="absolute inset-0 bg-cyan-950/40 backdrop-blur-[1px] pointer-events-none overflow-hidden">
+                          {/* Animated Laser Scan Beam */}
+                          <motion.div
+                            initial={{ top: '0%' }}
+                            animate={{ top: ['0%', '95%', '0%'] }}
+                            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                            className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_#22d3ee]"
+                          />
+                          {/* Corner Target Markers */}
+                          <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-cyan-400" />
+                          <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-cyan-400" />
+                          <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-cyan-400" />
+                          <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-cyan-400" />
+
+                          {/* Scanning Text Overlay Badge */}
+                          <div className="absolute bottom-2 left-2 right-2 bg-slate-950/85 backdrop-blur-md px-3 py-1.5 rounded-lg border border-cyan-500/40 flex items-center justify-between text-[11px] text-cyan-300">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+                              <span className="font-bold tracking-wide">AI Disaster Image Scan in Progress...</span>
+                            </div>
+                            <Scan className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
+                          </div>
+                        </div>
+                      )}
+
                       <button
                         type="button"
                         onClick={() => { setPhoto(null); setPhotoPreview(null); setHfScreening({ status: 'idle' }); }}
-                        className="absolute top-2 right-2 rounded-full bg-black/70 text-white p-1 text-xs hover:bg-red-600"
+                        className="absolute top-2 right-2 z-10 rounded-full bg-slate-950/80 text-white p-1 text-xs hover:bg-red-600 transition-colors"
                       >
                         ✕
                       </button>
                     </div>
                   ) : (
-                    <div className="h-48 rounded-xl border border-border/50 bg-card-hover/20 flex flex-col items-center justify-center p-4 text-center text-dim text-xs">
-                      <ShieldAlert className="h-8 w-8 text-dim mb-2 opacity-50" />
-                      <span>Photo preview & Hugging Face AI inspection will appear here</span>
+                    <div className="h-48 rounded-xl border border-slate-800 bg-slate-900/40 flex flex-col items-center justify-center p-4 text-center text-slate-500 text-xs">
+                      <ShieldAlert className="h-8 w-8 text-slate-600 mb-2 opacity-50" />
+                      <span>Photo preview & AI hazard scanner will activate upon upload</span>
                     </div>
                   )}
 
-                  {/* Hugging Face AI Screening Live Preview Banner */}
+                  {/* AI Vision Model Inspection Status Card */}
                   {photoPreview && (
                     <div className="col-span-1 md:col-span-2 mt-2">
                       {hfScreening.status === 'analyzing' && (
-                        <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-cyan-300 text-xs flex items-center gap-2.5">
-                          <Loader2 className="w-4 h-4 animate-spin text-cyan-400 shrink-0" />
-                          <span className="font-semibold">Hugging Face AI inspecting photo (google/vit-base-patch16-224)...</span>
+                        <div className="p-3.5 rounded-xl bg-cyan-950/50 border border-cyan-500/40 text-cyan-300 text-xs flex items-center justify-between shadow-lg">
+                          <div className="flex items-center gap-3">
+                            <Loader2 className="w-4 h-4 animate-spin text-cyan-400 shrink-0" />
+                            <div>
+                              <p className="font-bold text-white">AI Vision Hazard Inspection Active</p>
+                              <p className="text-[11px] text-cyan-400/80">Scanning terrain gradient, geological fissures, slope stability, and disaster indicators...</p>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 uppercase tracking-wider animate-pulse shrink-0">
+                            SCANNING
+                          </span>
                         </div>
                       )}
 
                       {hfScreening.status === 'completed' && hfScreening.decision === 'accepted' && (
-                        <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-200 text-xs space-y-1">
+                        <div className="p-3.5 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-200 text-xs space-y-1 shadow-lg">
                           <div className="flex items-center justify-between">
                             <span className="font-bold flex items-center gap-1.5 text-emerald-400">
-                              <Check className="w-4 h-4" /> ACCEPTED BY HUGGING FACE AI
+                              <Check className="w-4 h-4" /> ACCEPTED BY AI DISASTER SCREENER
                             </span>
-                            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded uppercase font-bold border border-emerald-500/30">
-                              Disaster Hazard
+                            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full uppercase font-bold border border-emerald-500/40">
+                              Disaster Hazard Confirmed
                             </span>
                           </div>
                           <p className="text-[11px] leading-relaxed opacity-90">{hfScreening.summary}</p>
@@ -380,12 +416,12 @@ export function ReportHazardPage() {
                       )}
 
                       {hfScreening.status === 'completed' && hfScreening.decision === 'rejected' && (
-                        <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-500/40 text-red-200 text-xs space-y-1">
+                        <div className="p-3.5 rounded-xl bg-red-950/50 border border-red-500/40 text-red-200 text-xs space-y-1 shadow-lg">
                           <div className="flex items-center justify-between">
                             <span className="font-bold flex items-center gap-1.5 text-red-400">
-                              <XCircle className="w-4 h-4" /> REJECTED BY HUGGING FACE AI
+                              <XCircle className="w-4 h-4" /> REJECTED BY AI DISASTER SCREENER
                             </span>
-                            <span className="text-[10px] bg-red-500/20 text-red-300 px-2 py-0.5 rounded uppercase font-bold border border-red-500/30">
+                            <span className="text-[10px] bg-red-500/20 text-red-300 px-2.5 py-0.5 rounded-full uppercase font-bold border border-red-500/40">
                               Non-Disaster Image
                             </span>
                           </div>
@@ -394,12 +430,12 @@ export function ReportHazardPage() {
                       )}
 
                       {hfScreening.status === 'completed' && hfScreening.decision === 'unclear_manual_inspection' && (
-                        <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-xs space-y-1">
+                        <div className="p-3.5 rounded-xl bg-amber-950/50 border border-amber-500/40 text-amber-200 text-xs space-y-1 shadow-lg">
                           <div className="flex items-center justify-between">
                             <span className="font-bold flex items-center gap-1.5 text-amber-400">
-                              <AlertCircle className="w-4 h-4" /> SENT FOR MANUAL INSPECTION
+                              <AlertCircle className="w-4 h-4" /> SENT FOR MANUAL ADMIN INSPECTION
                             </span>
-                            <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded uppercase font-bold border border-amber-500/30">
+                            <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2.5 py-0.5 rounded-full uppercase font-bold border border-amber-500/40">
                               Requires Admin Review
                             </span>
                           </div>
