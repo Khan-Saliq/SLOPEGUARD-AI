@@ -140,6 +140,25 @@ async function init() {
   try { fs.mkdirSync(uploadsDir, { recursive: true }); } catch (e) {}
 }
 
+const uploadsDir = path.join(__dirname, 'uploads');
+try { fs.mkdirSync(uploadsDir, { recursive: true }); } catch (e) {}
+
+function saveBase64ToUploads(base64Data) {
+  if (!base64Data || typeof base64Data !== 'string') return null;
+  if (!base64Data.startsWith('data:image/')) return base64Data;
+  try {
+    const ext = base64Data.match(/^data:image\/(\w+);base64,/)?.[1] || 'jpg';
+    const cleanBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
+    const filename = `hazard_${Date.now()}_${nanoid(6)}.${ext}`;
+    const filePath = path.join(uploadsDir, filename);
+    fs.writeFileSync(filePath, Buffer.from(cleanBase64, 'base64'));
+    return `/api/uploads/${filename}`;
+  } catch (e) {
+    console.error('Failed to save base64 image:', e.message);
+    return base64Data;
+  }
+}
+
 // Helper abstraction: use Mongo if connected, otherwise lowdb
 async function findUserByEmail(email) {
   const users = getDb().collection('users');
@@ -560,8 +579,18 @@ app.post('/api/reports', optionalAuthMiddleware, async (req, res) => {
     const categoryName = category || 'landslide';
     const loc = location || {};
 
-    // Execute AI Image Verification
-    const aiVerification = analyzeImageVerification(photoBase64, categoryName, { captureMethod, ...metadata });
+    // Save base64 image permanently to server/uploads
+    const savedPhoto = saveBase64ToUploads(photoBase64 || req.body.evidenceUrl || req.body.photoUrl) || photoBase64 || '/logo.png';
+
+    // Execute Hugging Face AI Image Inspection
+    let hfResult = null;
+    try {
+      hfResult = await analyzeImageWithHuggingFace(photoBase64 || savedPhoto, categoryName);
+    } catch (e) {
+      hfResult = analyzeImageVerification(photoBase64, categoryName, { captureMethod, ...metadata });
+    }
+
+    const initialStatus = hfResult?.decision === 'accepted' ? 'verified' : hfResult?.decision === 'rejected' ? 'rejected' : 'pending';
 
     const reportObj = {
       id: reportId,
@@ -575,14 +604,19 @@ app.post('/api/reports', optionalAuthMiddleware, async (req, res) => {
         district: loc.district || 'East Khasi Hills',
         state: loc.state || 'Meghalaya'
       },
-      photoUrl: photoBase64 || '/logo.png',
-      status: 'pending',
+      photoUrl: savedPhoto,
+      evidenceUrl: savedPhoto,
+      imageUrl: savedPhoto,
+      mediaUrl: savedPhoto,
+      status: initialStatus,
       userId: req.user?.id || 'anonymous-citizen',
       userName: req.user?.name || 'Citizen User',
       userEmail: req.user?.email || 'citizen@giriraksha.in',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      aiVerification
+      aiVerification: hfResult,
+      ai_result: hfResult,
+      assignedDepartment: 'Disaster Response Taskforce'
     };
 
     await insertReportDoc(reportObj);
@@ -858,15 +892,20 @@ app.post('/api/reports', authMiddleware, async (req, res) => {
 
   if (!category || !description) return res.status(400).json({ error: 'Missing fields' });
 
+  const rawPhoto = req.body.photoBase64 || evidenceUrl || req.body.photoUrl || req.body.imageUrl || req.body.mediaUrl;
+  const savedPhoto = saveBase64ToUploads(rawPhoto) || rawPhoto || null;
+
   // If evidence URL provided, trigger Hugging Face image analysis backend service if not already provided
   let hfResult = aiAnalysis;
-  if (!hfResult && evidenceUrl) {
+  if (!hfResult && (savedPhoto || evidenceUrl)) {
     try {
-      hfResult = await analyzeImageWithHuggingFace(evidenceUrl, category);
+      hfResult = await analyzeImageWithHuggingFace(savedPhoto || evidenceUrl, category);
     } catch (e) {
       console.warn('[Backend Report API] Hugging Face inspection fallback:', e.message);
     }
   }
+
+  const initialStatus = hfResult?.decision === 'accepted' ? 'verified' : hfResult?.decision === 'rejected' ? 'rejected' : 'pending';
 
   const report = {
     id: nanoid(),
@@ -876,16 +915,19 @@ app.post('/api/reports', authMiddleware, async (req, res) => {
     description,
     location,
     severity: severity || 'moderate',
-    evidenceUrl: evidenceUrl || req.body.mediaUrl || req.body.imageUrl || null,
-    mediaUrl: req.body.mediaUrl || evidenceUrl || null,
-    imageUrl: req.body.imageUrl || evidenceUrl || null,
-    photoUrl: req.body.photoUrl || evidenceUrl || null,
+    evidenceUrl: savedPhoto || evidenceUrl || null,
+    mediaUrl: savedPhoto || req.body.mediaUrl || null,
+    imageUrl: savedPhoto || req.body.imageUrl || null,
+    photoUrl: savedPhoto || req.body.photoUrl || null,
     evidenceAssessment: req.body.evidenceAssessment || 'likely_genuine',
     mediaAuthenticity: req.body.mediaAuthenticity || 'camera_verified',
     captureTimestamp: captureTimestamp || null,
     captureMetadata: captureMetadata || null,
     timestamp: new Date().toISOString(),
-    status: 'submitted',
+    status: initialStatus,
+    aiVerification: hfResult,
+    ai_result: hfResult,
+    assignedDepartment: 'Disaster Response Taskforce',
     // Required AI Inspection Database Fields
     ai_analysis_status: hfResult?.analysisStatus || 'PENDING',
     ai_model_name: hfResult?.modelName || process.env.HUGGINGFACE_IMAGE_MODEL || 'google/vit-base-patch16-224',
@@ -1514,9 +1556,6 @@ init().then(() => {
 });
 
 // File upload handling: store uploads in server/uploads and return public download URL
-const uploadsDir = path.join(__dirname, 'uploads');
-try { fs.mkdirSync(uploadsDir, { recursive: true }); } catch (e) {}
-
 app.use('/uploads', express.static(uploadsDir));
 app.use('/api/uploads', express.static(uploadsDir));
 

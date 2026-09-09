@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../hooks/useApp';
 import { getApiUrl, formatRelativeTime } from '../lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
@@ -18,6 +19,9 @@ import {
   ShieldAlert,
   Loader2,
   RefreshCw,
+  Eye,
+  X,
+  ShieldCheck,
 } from 'lucide-react';
 
 const DEPARTMENT_OPTIONS = [
@@ -44,6 +48,9 @@ export default function AssignmentsPage() {
   // Selected report for deletion confirmation
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Lightbox photo preview
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
 
   // Error & success notifications
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -136,6 +143,11 @@ export default function AssignmentsPage() {
     return matchesSearch && matchesStatus;
   });
 
+  const totalCount = reports.length;
+  const verifiedCount = reports.filter(r => r.status === 'verified').length;
+  const pendingCount = reports.filter(r => r.status === 'pending' || r.status === 'submitted').length;
+  const rejectedCount = reports.filter(r => r.status === 'rejected').length;
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header Bar */}
@@ -159,6 +171,49 @@ export default function AssignmentsPage() {
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh Reports
         </Button>
+      </div>
+
+      {/* Command Metrics Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center gap-3">
+          <div className="p-3 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+            <Building2 className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-bold uppercase">Total Incident Reports</span>
+            <span className="text-xl font-extrabold text-white">{totalCount}</span>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center gap-3">
+          <div className="p-3 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-bold uppercase">Pending Admin Review</span>
+            <span className="text-xl font-extrabold text-amber-300">{pendingCount}</span>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center gap-3">
+          <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-bold uppercase">Verified & Dispatched</span>
+            <span className="text-xl font-extrabold text-emerald-400">{verifiedCount}</span>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center gap-3">
+          <div className="p-3 rounded-xl bg-red-500/10 text-red-400 border border-red-500/30">
+            <XCircle className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-bold uppercase">Rejected / Non-Hazard</span>
+            <span className="text-xl font-extrabold text-red-400">{rejectedCount}</span>
+          </div>
+        </div>
       </div>
 
       {/* Alert Banner */}
@@ -237,120 +292,133 @@ export default function AssignmentsPage() {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {filteredReports.map(report => {
-              const photo = report.evidenceUrl || report.mediaUrl || report.imageUrl || report.photoUrl;
-              const aiDecision = report.aiVerification?.decision || (report.status === 'verified' ? 'accepted' : report.status === 'rejected' ? 'rejected' : 'unclear_manual_inspection');
-              const assignedDept = report.assignedDepartment || 'Unassigned Taskforce';
+            <AnimatePresence>
+              {filteredReports.map((report, idx) => {
+                const photo = report.evidenceUrl || report.mediaUrl || report.imageUrl || report.photoUrl;
+                const aiDecision = report.aiVerification?.decision || (report.status === 'verified' ? 'accepted' : report.status === 'rejected' ? 'rejected' : 'unclear_manual_inspection');
+                const assignedDept = report.assignedDepartment || 'Unassigned Taskforce';
 
-              return (
-                <div
-                  key={report.id}
-                  className="p-5 rounded-2xl border border-slate-800 bg-slate-900/90 shadow-lg hover:border-slate-700 transition-all flex flex-col justify-between gap-4"
-                >
-                  <div className="space-y-3">
-                    {/* Top Row: AI Status & Category */}
-                    <div className="flex items-start justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-bold uppercase">
-                          {report.category.replace('_', ' ')}
+                return (
+                  <motion.div
+                    key={report.id}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, delay: idx * 0.04 }}
+                    className="p-5 rounded-2xl border border-slate-800 bg-slate-900/90 shadow-lg hover:border-slate-700 transition-all flex flex-col justify-between gap-4"
+                  >
+                    <div className="space-y-3">
+                      {/* Top Row: AI Status & Category */}
+                      <div className="flex items-start justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-bold uppercase">
+                            {report.category.replace('_', ' ')}
+                          </span>
+
+                          {/* AI Classification Badge */}
+                          {aiDecision === 'accepted' && (
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-400" /> ACCEPTED BY HF AI
+                            </span>
+                          )}
+                          {aiDecision === 'rejected' && (
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/40 flex items-center gap-1">
+                              <XCircle className="w-3 h-3 text-red-400" /> REJECTED BY HF AI
+                            </span>
+                          )}
+                          {aiDecision === 'unclear_manual_inspection' && (
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3 text-amber-400" /> MANUAL INSPECTION REQUIRED
+                            </span>
+                          )}
+                        </div>
+
+                        <span className="text-[10px] font-mono text-slate-500">#{report.id}</span>
+                      </div>
+
+                      {/* Image & Description */}
+                      <div className="flex gap-4 items-start">
+                        {photo ? (
+                          <div className="relative group shrink-0">
+                            <img
+                              src={photo}
+                              alt="Incident Photo"
+                              className="w-24 h-24 rounded-xl object-cover border border-slate-800 bg-slate-950 shadow-md transition-transform group-hover:scale-105"
+                            />
+                            <button
+                              onClick={() => setPreviewPhoto(photo)}
+                              className="absolute inset-0 bg-slate-950/70 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] font-bold text-white gap-1 transition-opacity rounded-xl"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-cyan-400" /> Zoom
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="w-24 h-24 rounded-xl border border-slate-800 bg-slate-950/60 flex items-center justify-center text-[10px] text-slate-600 text-center p-2 shrink-0">
+                            No Photo
+                          </div>
+                        )}
+
+                        <div className="space-y-1.5 flex-1 min-w-0">
+                          <p className="text-xs font-bold text-white line-clamp-2 leading-snug">
+                            {report.description}
+                          </p>
+
+                          <div className="flex items-center gap-1.5 text-[11px] text-slate-400 pt-0.5">
+                            <MapPin className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                            <span className="truncate">
+                              {report.location?.area || 'Sector'}, {report.location?.district || 'District'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 text-[10px] text-slate-500 pt-0.5">
+                            <Clock className="w-3 h-3" />
+                            <span>Submitted {formatRelativeTime(report.createdAt || report.timestamp)}</span>
+                            <span>•</span>
+                            <span>By {report.userName || 'Citizen'}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Assigned Department Badge */}
+                      <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-slate-300">
+                          <UserCheck className="w-4 h-4 text-cyan-400 shrink-0" />
+                          <div>
+                            <span className="text-[10px] text-slate-500 block uppercase font-bold">Assigned Department</span>
+                            <span className="font-semibold text-white">{assignedDept}</span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 uppercase font-bold">
+                          {report.status}
                         </span>
-
-                        {/* AI Classification Badge */}
-                        {aiDecision === 'accepted' && (
-                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-400" /> ACCEPTED BY HF AI
-                          </span>
-                        )}
-                        {aiDecision === 'rejected' && (
-                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/40 flex items-center gap-1">
-                            <XCircle className="w-3 h-3 text-red-400" /> REJECTED BY HF AI
-                          </span>
-                        )}
-                        {aiDecision === 'unclear_manual_inspection' && (
-                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3 text-amber-400" /> MANUAL INSPECTION REQUIRED
-                          </span>
-                        )}
-                      </div>
-
-                      <span className="text-[10px] font-mono text-slate-500">#{report.id}</span>
-                    </div>
-
-                    {/* Image & Description */}
-                    <div className="flex gap-4 items-start">
-                      {photo ? (
-                        <img
-                          src={photo}
-                          alt="Incident Photo"
-                          className="w-24 h-24 rounded-xl object-cover border border-slate-800 bg-slate-950 shrink-0"
-                        />
-                      ) : (
-                        <div className="w-24 h-24 rounded-xl border border-slate-800 bg-slate-950/60 flex items-center justify-center text-[10px] text-slate-600 text-center p-2 shrink-0">
-                          No Photo
-                        </div>
-                      )}
-
-                      <div className="space-y-1.5 flex-1 min-w-0">
-                        <p className="text-xs font-bold text-white line-clamp-2 leading-snug">
-                          {report.description}
-                        </p>
-
-                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 pt-0.5">
-                          <MapPin className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                          <span className="truncate">
-                            {report.location?.area || 'Sector'}, {report.location?.district || 'District'}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2 text-[10px] text-slate-500 pt-0.5">
-                          <Clock className="w-3 h-3" />
-                          <span>Submitted {formatRelativeTime(report.createdAt || report.timestamp)}</span>
-                          <span>•</span>
-                          <span>By {report.userName || 'Citizen'}</span>
-                        </div>
                       </div>
                     </div>
 
-                    {/* Assigned Department Badge */}
-                    <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-slate-300">
-                        <UserCheck className="w-4 h-4 text-cyan-400 shrink-0" />
-                        <div>
-                          <span className="text-[10px] text-slate-500 block uppercase font-bold">Assigned Department</span>
-                          <span className="font-semibold text-white">{assignedDept}</span>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 uppercase font-bold">
-                        {report.status}
-                      </span>
+                    {/* Actions Row */}
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800/80">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setDeletingId(report.id)}
+                        className="text-xs font-semibold text-red-400 border-red-500/30 hover:bg-red-500/20 hover:text-red-300 gap-1.5"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Delete Report
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setAssigningReport(report);
+                          setSelectedDept(report.assignedDepartment || DEPARTMENT_OPTIONS[0].name);
+                        }}
+                        className="text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 gap-1.5 shadow-md shadow-cyan-500/20"
+                      >
+                        <UserCheck className="w-3.5 h-3.5" /> Assign to Department
+                      </Button>
                     </div>
-                  </div>
-
-                  {/* Actions Row */}
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800/80">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setDeletingId(report.id)}
-                      className="text-xs font-semibold text-red-400 border-red-500/30 hover:bg-red-500/20 hover:text-red-300 gap-1.5"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" /> Delete Report
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setAssigningReport(report);
-                        setSelectedDept(report.assignedDepartment || DEPARTMENT_OPTIONS[0].name);
-                      }}
-                      className="text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 gap-1.5 shadow-md shadow-cyan-500/20"
-                    >
-                      <UserCheck className="w-3.5 h-3.5" /> Assign to Department
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
         </CardContent>
       </Card>
@@ -437,6 +505,21 @@ export default function AssignmentsPage() {
                 {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Permanently Delete'}
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Photo Lightbox Modal */}
+      {previewPhoto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+          <div className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl p-2">
+            <button
+              onClick={() => setPreviewPhoto(null)}
+              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-slate-950/80 text-white hover:bg-red-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img src={previewPhoto} alt="Full Size Evidence" className="w-full h-full max-h-[80vh] object-contain rounded-xl" />
           </div>
         </div>
       )}

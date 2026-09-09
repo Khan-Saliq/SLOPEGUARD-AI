@@ -345,13 +345,16 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', col
     return {
       analysisStatus: 'COMPLETED',
       imageRelevance: 'RELEVANT',
+      decision: calculatedHazardConfidence >= 0.70 ? 'accepted' : 'unclear_manual_inspection',
       detectedLabels,
       possibleHazardType: hazType,
       hazardConfidence: calculatedHazardConfidence,
       requiresHumanVerification: true,
       modelName: `${modelName} (vision-classifier)`,
       processedAt,
-      summaryMessage: '🟢 AI ML VERIFIED: HILL, SLOPE, ROCK OR WATER AREA DETECTED. Forwarded to Admin Command Center for manual inspection.'
+      summaryMessage: calculatedHazardConfidence >= 0.70
+        ? '🟢 ACCEPTED BY HUGGING FACE AI: Natural slope, rock, or water hazard feature detected with high confidence.'
+        : '🟡 SENT FOR MANUAL INSPECTION: Outdoor terrain detected. Forwarded to Admin Command Center for verification.'
     };
   }
 
@@ -359,6 +362,7 @@ function runBuiltInVisionClassifier(imageBuffer, categoryHint = 'landslide', col
   return {
     analysisStatus: 'COMPLETED',
     imageRelevance: 'IRRELEVANT',
+    decision: 'rejected',
     detectedLabels: [
       { label: `No mountain, hill, slope, rock, or water area detected (terrain density: ${totalTerrainP}%)`, confidence: 0.05 }
     ],
