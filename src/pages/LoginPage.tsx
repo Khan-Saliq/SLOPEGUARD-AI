@@ -8,7 +8,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [location, setLocation] = useState<{ lat: number; lng: number; area?: string; accuracy?: number } | null>(null);
+  const [location, setLocation] = useState<{ lat: number; lng: number; area?: string; city?: string; district?: string; state?: string; accuracy?: number } | null>(null);
   const [locLoading, setLocLoading] = useState(false);
   const { login } = useApp();
   const nav = useNavigate();
@@ -17,14 +17,45 @@ export default function LoginPage() {
     if ('geolocation' in navigator) {
       setLocLoading(true);
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
+        async (pos) => {
           const lat = parseFloat(pos.coords.latitude.toFixed(5));
           const lng = parseFloat(pos.coords.longitude.toFixed(5));
-          setLocation({ lat, lng, accuracy: Math.round(pos.coords.accuracy), area: 'Detected Location' });
+
+          let area = 'Shillong Sector';
+          let city = 'Shillong';
+          let district = 'East Khasi Hills';
+          let state = 'Meghalaya';
+
+          try {
+            const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+            if (geoRes.ok) {
+              const geoData = await geoRes.json();
+              const addr = geoData.address || {};
+              area = addr.suburb || addr.neighbourhood || addr.village || addr.town || addr.road || addr.quarter || area;
+              city = addr.city || addr.town || addr.city_district || addr.state_district || addr.county || city;
+              district = addr.state_district || addr.county || district;
+              if (addr.state) state = addr.state;
+            }
+          } catch (e) {}
+
+          const fullLocationName = `${area}, ${city}`;
+          setLocation({
+            lat,
+            lng,
+            accuracy: Math.round(pos.coords.accuracy),
+            area: fullLocationName,
+            district,
+            state
+          });
           setLocLoading(false);
         },
         (err) => {
           console.warn('Geolocation warning on login:', err.message);
+          setLocation({
+            lat: 25.5788,
+            lng: 91.8933,
+            area: 'Shillong Hill Sector, Shillong'
+          });
           setLocLoading(false);
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
@@ -74,10 +105,10 @@ export default function LoginPage() {
             <MapPin className="w-4 h-4 text-cyan-400 shrink-0" />
             <div>
               <p className="font-semibold text-slate-200">
-                {location ? `GPS Acquired: ${location.lat}, ${location.lng}` : locLoading ? 'Acquiring GPS coordinates...' : 'GPS Location Pending'}
+                {location?.area ? `Location Acquired: ${location.area}` : locLoading ? 'Detecting City & Area Location...' : 'Shillong Hill Sector, Shillong'}
               </p>
               {location?.accuracy && (
-                <p className="text-[10px] text-slate-400">Accuracy: ±{location.accuracy}m</p>
+                <p className="text-[10px] text-slate-400">GPS Precision: ±{location.accuracy}m</p>
               )}
             </div>
           </div>

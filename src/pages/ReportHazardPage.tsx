@@ -96,7 +96,7 @@ export function ReportHazardPage() {
     }
 
     setFetchingGps(true);
-    setGpsStatus('Detecting exact GPS location...');
+    setGpsStatus('Detecting City & Area location...');
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
@@ -104,25 +104,31 @@ export function ReportHazardPage() {
         const lngVal = parseFloat(pos.coords.longitude.toFixed(5));
         setLat(latVal);
         setLng(lngVal);
-        setGpsStatus(`GPS Acquired: ${latVal}, ${lngVal} (±${Math.round(pos.coords.accuracy)}m)`);
-        setFetchingGps(false);
+
+        let area = areaName;
+        let city = 'Shillong';
+        let dist = district;
 
         try {
           const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latVal}&lon=${lngVal}&format=json`);
           if (geoRes.ok) {
             const geoData = await geoRes.json();
             const addr = geoData.address || {};
-            const area = addr.suburb || addr.neighbourhood || addr.village || addr.town || addr.city || areaName;
-            const dist = addr.state_district || addr.county || addr.city_district || district;
+            area = addr.suburb || addr.neighbourhood || addr.village || addr.town || addr.road || area;
+            city = addr.city || addr.town || addr.city_district || addr.state_district || addr.county || city;
+            dist = addr.state_district || addr.county || addr.city_district || dist;
             if (area) setAreaName(area);
             if (dist) setDistrict(dist);
             if (addr.state) setState(addr.state);
           }
         } catch (e) {}
+
+        setGpsStatus(`Location Acquired: ${area}, ${city}`);
+        setFetchingGps(false);
       },
       (err) => {
         console.warn('Geolocation error:', err.message);
-        setGpsStatus('Using regional default GPS (Coordinates selectable)');
+        setGpsStatus('Location Default: Shillong Hill Sector, Shillong');
         setFetchingGps(false);
       },
       { timeout: 10000, enableHighAccuracy: true }

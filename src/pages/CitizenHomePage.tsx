@@ -33,7 +33,7 @@ export function CitizenHomePage() {
   const [locationError, setLocationError] = useState<string | null>(null);
 
   // Default NER location fallback (Shillong, Meghalaya)
-  const DEFAULT_LOCATION = { lat: 25.5788, lng: 91.8933, name: 'Shillong Hill Sector', area: 'Shillong Sector', district: 'East Khasi Hills' };
+  const DEFAULT_LOCATION = { lat: 25.5788, lng: 91.8933, name: 'Shillong Hill Sector, Shillong', area: 'Shillong Hill Sector', district: 'East Khasi Hills' };
 
   const detectLocation = () => {
     if (!navigator.geolocation) {
@@ -50,8 +50,8 @@ export function CitizenHomePage() {
       async (pos) => {
         const latVal = parseFloat(pos.coords.latitude.toFixed(5));
         const lngVal = parseFloat(pos.coords.longitude.toFixed(5));
-        let locName = `GPS: ${latVal}° N, ${lngVal}° E`;
-        let area = 'Current GPS Sector';
+        let area = 'Shillong Hill Sector';
+        let city = 'Shillong';
         let dist = 'East Khasi Hills';
 
         try {
@@ -59,12 +59,13 @@ export function CitizenHomePage() {
           if (geoRes.ok) {
             const geoData = await geoRes.json();
             const addr = geoData.address || {};
-            area = addr.suburb || addr.neighbourhood || addr.village || addr.town || addr.city || area;
+            area = addr.suburb || addr.neighbourhood || addr.village || addr.town || addr.road || area;
+            city = addr.city || addr.town || addr.city_district || addr.state_district || addr.county || city;
             dist = addr.state_district || addr.county || addr.city_district || dist;
-            locName = `${area}, ${dist}`;
           }
         } catch (e) {}
 
+        const locName = `${area}, ${city}`;
         setUserLocation({ lat: latVal, lng: lngVal, name: locName, area, district: dist });
         setLocationMode('auto');
         setIsLocating(false);
